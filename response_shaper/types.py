@@ -1,4 +1,5 @@
-from typing import Dict, List, Union, Optional, NewType
+from typing import Dict, List, Union, Optional, NewType, Callable
+from rest_framework.response import Response
 
 # Custom Types
 StatusType = Union[str, bool]
@@ -13,3 +14,7 @@ TokenType = Optional[str]
 UserType = Optional[Dict[str, Union[str, int]]]
 Timestamp = NewType("Timestamp", str)
 ProcessingTime = Optional[str]
+ResultsType = Optional[List[Dict[str, Union[str, int, Dict]]]]
+
+# Define a generic response function type
+ResponseFuncType = Callable[..., Response]
