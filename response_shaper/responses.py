@@ -10,7 +10,7 @@ from .types import (
     UserType,
     ProcessingTime,
 )
-from typing import Dict, List, Union, Optional, NewType
+from typing import Dict, List, Optional
 from rest_framework.response import Response
 from django.utils import timezone
 
