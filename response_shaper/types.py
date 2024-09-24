@@ -1,4 +1,5 @@
-from typing import Dict, List, Union, Optional, NewType, Callable
+from typing import Callable, Dict, List, NewType, Optional, Union
+
 from rest_framework.response import Response
 
 # Custom Types
