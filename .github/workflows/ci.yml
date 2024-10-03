@@ -38,3 +38,8 @@ jobs:
 
       - name: Run pre-commit hooks
         run: pre-commit run --all-files --config=.pre-commit-config-ci.yaml
+
+      - name: Upload coverage to Codecov
+        run: codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
