@@ -132,6 +132,7 @@ disable = [
   "R1705", # Unnecessary "elif" after "return"
   "R0401",
   "W0143",
+  "W0231",
   "R0913",
   "R0911",
 ]
