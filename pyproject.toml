@@ -172,6 +172,8 @@ addopts = "--cov --cov-report=term-missing --cov-report=html --cov-fail-under=90
 markers = [
   "api_responses: Tests api responses",
   "decorators: Test decorators for api responses",
+  "settings: Test settings",
+  "middleware: Test Dynamic middleware",
 ]
 
 norecursedirs = [
