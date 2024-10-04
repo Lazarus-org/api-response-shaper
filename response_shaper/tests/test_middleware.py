@@ -1,15 +1,17 @@
-import pytest
 import json
 import sys
-from unittest.mock import patch, MagicMock
-from django.http import JsonResponse, HttpResponse, HttpRequest
+from typing import Callable, Dict, List
+from unittest.mock import MagicMock, patch
+
+import pytest
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.test import RequestFactory
+
 from response_shaper.middleware import DynamicResponseMiddleware
 from response_shaper.settings.conf import response_shaper_config
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
-from typing import Dict, Callable, List
 
 pytestmark = [
     pytest.mark.middleware,

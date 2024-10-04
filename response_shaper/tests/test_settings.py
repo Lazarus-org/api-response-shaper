@@ -1,8 +1,10 @@
-import pytest
 import sys
-from django.core.checks import Error
+from unittest.mock import MagicMock, patch
+
+import pytest
 from django.conf import settings
-from unittest.mock import patch, MagicMock
+from django.core.checks import Error
+
 from response_shaper.settings.check import check_response_shaper_settings
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
 

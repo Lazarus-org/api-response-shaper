@@ -1,19 +1,21 @@
 import sys
+from typing import Callable, Dict
+
 import pytest
-from rest_framework.response import Response
 from rest_framework import status
-from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
-from typing import Dict, Callable
+from rest_framework.response import Response
+
 from response_shaper.decorators import (
     format_api_response,
-    format_paginated_response,
+    format_auth_response,
+    format_batch_response,
     format_error_response,
     format_minimal_success_response,
-    format_batch_response,
-    format_auth_response,
+    format_paginated_response,
     response_decorator,
 )
 from response_shaper.responses import api_response
+from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
 
 pytestmark = [
     pytest.mark.decorators,
