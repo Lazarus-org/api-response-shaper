@@ -5,13 +5,13 @@ from rest_framework import status
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
 from typing import Dict, Callable
 from response_shaper.decorators import (
-    format_api_response, 
-    format_paginated_response, 
-    format_error_response, 
-    format_minimal_success_response, 
-    format_batch_response, 
+    format_api_response,
+    format_paginated_response,
+    format_error_response,
+    format_minimal_success_response,
+    format_batch_response,
     format_auth_response,
-    response_decorator
+    response_decorator,
 )
 from response_shaper.responses import api_response
 
@@ -21,16 +21,15 @@ pytestmark = [
 ]
 
 
-
 class TestResponseDecorators:
     """
     Class to test response decorators and ensure they properly modify view function responses.
     """
-    
+
     def test_return_original_response(self, non_response_view: Callable) -> None:
         """
         Test that the decorator returns the original non-Response object as-is.
-        
+
         :param non_response_view: Fixture for a mock view function that returns a non-Response object.
         """
         decorated_view = response_decorator(api_response)(non_response_view)
@@ -43,7 +42,7 @@ class TestResponseDecorators:
     def test_format_api_response(self, mock_view: Callable) -> None:
         """
         Test that the format_api_response decorator applies the correct formatting.
-        
+
         :param mock_view: Fixture for a mock view function.
         """
         decorated_view = format_api_response(mock_view)
@@ -56,7 +55,7 @@ class TestResponseDecorators:
     def test_format_paginated_response(self, mock_paginated_view: Callable) -> None:
         """
         Test that the format_paginated_response decorator applies the correct formatting for paginated data.
-        
+
         :param mock_paginated_view: Fixture for a mock paginated view function.
         """
         decorated_view = format_paginated_response(mock_paginated_view)
@@ -96,7 +95,7 @@ class TestResponseDecorators:
     def test_format_batch_response(self, batch_view: Callable) -> None:
         """
         Test that the format_batch_response decorator applies the correct formatting for batch operations.
-        
+
         :param batch_view: Fixture for a mock batch view function.
         """
         decorated_view = format_batch_response(batch_view)
@@ -110,7 +109,7 @@ class TestResponseDecorators:
     def test_format_auth_response(self, auth_view: Callable) -> None:
         """
         Test that the format_auth_response decorator applies the correct formatting for auth-related responses.
-        
+
         :param auth_view: Fixture for a mock auth view function.
         """
         decorated_view = format_auth_response(auth_view)

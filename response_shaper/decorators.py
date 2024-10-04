@@ -1,5 +1,5 @@
 from functools import wraps
-from typing import Callable
+from typing import Callable, Any
 
 from rest_framework.response import Response
 
@@ -30,7 +30,7 @@ def response_decorator(response_func: ResponseFuncType) -> Callable:
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
-        def wrapper(*args, **kwargs) -> Response:
+        def wrapper(*args: Any, **kwargs: Any) -> Response:
             # Call the original view function
             response = func(*args, **kwargs)
 
