@@ -1,4 +1,3 @@
-
 # API Response Shaper
 [![License](https://img.shields.io/github/license/lazarus-org/api-response-shaper)](https://github.com/lazarus-org/api-response-shaper/blob/main/LICENSE)
 [![PyPI Release](https://img.shields.io/pypi/v/api-response-shaper)](https://pypi.org/project/api-response-shaper/)
@@ -28,45 +27,63 @@
 - **Exclusion Paths**: Skip specific routes from being processed by the middleware.
 - **Django Version**: Compatible with Django REST Framework (DRF) and Django middleware.
 
-## Installation
+
+## Project Detail
+
+- Language: Python >= 3.8
+- Framework: Django >= 4.2
+- Django REST Framework: >= 3.14
+
+
+## Documentation
+
+The documentation is organized into the following sections:
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Settings](#settings)
+- [Available Format Options](#available-format-options)
+- [Required Email Settings](#required-email-settings)
+
+
+## Setup
+Setting up the `api-response-shaper` is simple, folow these steps to setup:
+
+1. **Install the Package**:
 
 To install the `api-response-shaper`, simply use pip:
 
 ```bash
-pip install api-response-shaper
+$ pip install api-response-shaper
 ```
 
-## Configuration
+2. **Add to Installed Apps**
 
-### Middleware Setup
-
-Add the middleware to your Django settings:
+Add `response_shaper` to your `INSTALLED_APPS` in your Django settings file:
 
 ```python
-MIDDLEWARE = [
-    # other middleware
-    'response_shaper.middleware.DynamicResponseMiddleware',
+INSTALLED_APPS = [
+    # ...
+    'response_shaper',
+    # ...
 ]
 ```
 
-You can also configure the `response_shaper_config` in your Django settings:
+3. **Configure Middleware**:
+
+Add `DynamicResponseMiddleware` middleware to the MIDDLEWARE list in your Django `settings.py`:
 
 ```python
-# settings.py
-
-CUSTOM_RESPONSE_DEBUG = True or False
-CUSTOM_RESPONSE_EXCLUDED_PATHS = ["urlpath", ...]
-CUSTOM_RESPONSE_SUCCESS_HANDLER = "path.of_your.handler"
-CUSTOM_RESPONSE_ERROR_HANDLER = "path.of_your.handler"
-
+MIDDLEWARE = [
+    # ...
+    'response_shaper.middleware.DynamicResponseMiddleware',
+    # ...
+]
 ```
+Once this middleware is added, all API responses will be dynamically structured. Whether it's a successful or an error response, the middleware ensures a consistent format across your API endpoints. You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format.
+You can also configure the `api-response-shaper` for your project needs, for more details, please refer to the [Settings](#settings) section.
 
-### Available Settings:
-
-- `CUSTOM_RESPONSE_DEBUG`: When set to `True`, disables response shaping for debugging purposes.
-- `CUSTOM_RESPONSE_EXCLUDED_PATHS`: List of paths that will be skipped by the middleware.
-- `CUSTOM_RESPONSE_SUCCESS_HANDLER`: Path to the custom success handler function.
-- `CUSTOM_RESPONSE_ERROR_HANDLER`: Path to the custom error handler function.
+----
 
 ## Usage
 
@@ -84,6 +101,7 @@ You can apply different response formats using decorators in your views. Availab
 Example usage:
 
 ```python
+from rest_framework.response import Response
 from response_shaper.decorators import format_api_response, format_paginated_response
 
 @format_api_response
@@ -104,7 +122,7 @@ def paginated_view(request):
 
 ### Custom Success and Error Handlers
 
-If you want more control over the response structure, you can define custom handlers. Use the `RESPONSE_SHAPER` settings to specify the paths to your custom handlers.
+If you want more control over the response structure, you can define custom handlers. Use the `RESPONSE_SHAPER` settings to specify the paths to your custom handlers. for more details, please refer to the [Settings](#settings).
 
 For example, define a custom success handler in `myapp.responses`:
 
@@ -123,28 +141,90 @@ def custom_success_handler(response):
 Then configure this handler in your settings:
 
 ```python
-CUSTOM_RESPONSE_SUCCESS_HANDLER = "path.of_your.custom_success_handler"
+RESPONSE_SHAPER_SUCCESS_HANDLER = "path.to_your.custom_success_handler"
 ```
+
+----
 
 ## Built-In Response Types
 
 - **Standard API Response**:
-  - `api_response(success: bool = True, message: str = None, data: dict = None, errors: dict = None, status_code: int = 200) -> Response`
+```shell
+api_response(
+  success: bool = True,
+  message: str = None,
+  data: dict = None,
+  errors: dict = None,
+  status_code: int = 200
+) -> Response
+```
+
+---
 
 - **Paginated Response**:
-  - `paginated_api_response(success: bool = True, data: list = None, page: int = None, total_pages: int = None, total_items: int = None, status_code: int = 200) -> Response`
+
+```shell
+paginated_api_response(
+  success: bool = True,
+  data: list = None,
+  page: int = None,
+  total_pages: int = None,
+  total_items: int = None,
+  status_code: int = 200
+) -> Response
+```
+
+---
 
 - **Error Response**:
-  - `error_api_response(message: str = None, errors: dict = None, error_code: str = None, status_code: int = 400) -> Response`
+```shell
+error_api_response(
+  message: str = None,
+  errors: dict = None,
+  error_code: str = None,
+  status_code: int = 400
+) -> Response
+```
+
+---
 
 - **Minimal Success Response**:
-  - `minimal_success_response(message: str = "Request successful", status_code: int = 200) -> Response`
+```shell
+minimal_success_response(
+  message: str = "Request successful",
+  status_code: int = 200
+) -> Response
+```
+
+---
 
 - **Batch Operation Response**:
-  - `batch_api_response(success: bool = True, results: list = None, errors: dict = None, status_code: int = 200) -> Response`
+
+```shell
+batch_api_response(
+  success: bool = True,
+  results: list = None,
+  errors: dict = None,
+  status_code: int = 200
+) -> Response`
+```
+
+---
 
 - **Authentication Response**:
-  - `auth_api_response(success: bool = True, message: str = None, token: str = None, user: dict = None, errors: dict = None, status_code: int = 200) -> Response`
+
+```shell
+auth_api_response(
+  success: bool = True,
+  message: str = None,
+  token: str = None,
+  user: dict = None,
+  errors: dict = None,
+  status_code: int = 200
+) -> Response
+```
+
+----
 
 ## Exception Handling
 
@@ -153,14 +233,58 @@ The middleware automatically handles Django exceptions and structures error resp
 - `ObjectDoesNotExist` -> 404 Not Found
 - `IntegrityError` -> 400 Bad Request
 - `ValidationError` -> 400 Bad Request
-- Generic exceptions -> 500 Internal Server Error
+- Generic exceptions -> 500 Internal Server Error (with Traceback details)
 
 You can customize the exception response format by providing custom error handlers via the `RESPONSE_SHAPER` configuration.
 
-## Contributing
+----
 
-Contributions are welcome! If you find any issues or want to add new features, feel free to create a pull request or open an issue on the repository.
+## Settings
 
-## License
+In this section, we dive deep into the settings configuration and defaults.
 
-This package is licensed under the MIT License.
+#### Default configuration:
+
+Here are the default settings that are automatically applied:
+
+```python
+# settings.py
+
+RESPONSE_SHAPER_DEBUG_MODE = False
+RESPONSE_SHAPER_EXCLUDED_PATHS = ["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"]
+RESPONSE_SHAPER_SUCCESS_HANDLER = ""
+RESPONSE_SHAPER_ERROR_HANDLER = ""
+
+```
+
+`RESPONSE_SHAPER_DEBUG_MODE`
+----------------------------
+
+- **Type**: `bool`
+- **Description**: When set to `True`, disables response shaping for debugging purposes.
+- **Default**: `False`
+
+`RESPONSE_SHAPER_EXCLUDED_PATHS`
+--------------------------------
+
+- **Type**: `List[str]`
+- **Description**: A list of URL paths where the middleware will not shape responses. This is useful for excluding admin or documentation routes from being processed, ensuring that those paths retain their original behavior.
+- **Default**: `["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"]`
+
+
+`RESPONSE_SHAPER_SUCCESS_HANDLER`
+---------------------------------
+
+- **Type**: `str`
+- **Description**: Path to the custom handler to manage successful responses. you can specify a custom handler if you want to modify the success response format.
+- **Default**: Default Success handler in `DynamicResponseMiddleware`
+
+`RESPONSE_SHAPER_ERROR_HANDLER`
+-------------------------------
+
+- **Type**: `str`
+- **Description**: Path to the custom handler to manage error responses. Similar to the success handler, it allows you to provide your own handler to modify the error response format if the default behavior does not meet your needs.
+- **Default**: Default Error handler in `DynamicResponseMiddleware`
+
+
+Thank you for using `api-response-shaper`. We hope this package enhances your Django application's API responses. If you have any questions or issues, feel free to open an issue on our [GitHub repository](https://github.com/lazarus-org/api-response-shaper).
