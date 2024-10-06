@@ -233,7 +233,7 @@ The middleware automatically handles Django exceptions and structures error resp
 - `ObjectDoesNotExist` -> 404 Not Found
 - `IntegrityError` -> 400 Bad Request
 - `ValidationError` -> 400 Bad Request
-- Generic exceptions -> 500 Internal Server Error (with Traceback details)
+- Generic exceptions -> 500 Internal Server Error (with Traceback details if `settings.DEBUG` is `True`)
 
 You can customize the exception response format by providing custom error handlers via the `RESPONSE_SHAPER` configuration.
 

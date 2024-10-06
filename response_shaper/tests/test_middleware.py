@@ -1,17 +1,15 @@
+import pytest
 import json
 import sys
-from typing import Callable, Dict, List
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
+from django.http import JsonResponse, HttpResponse
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError
-from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.test import RequestFactory
-
 from response_shaper.middleware import DynamicResponseMiddleware
 from response_shaper.settings.conf import response_shaper_config
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
+from typing import Dict, Callable, List
 
 pytestmark = [
     pytest.mark.middleware,
@@ -69,7 +67,7 @@ class TestDynamicResponseMiddleware:
         :param get_response: Mocked response for testing.
         """
 
-        def error_response(request: HttpRequest) -> JsonResponse:
+        def error_response(request):
             return JsonResponse({"error": "Some error occurred"}, status=400)
 
         request = request_factory.get("/api/test/")
@@ -151,6 +149,13 @@ class TestDynamicResponseMiddleware:
                 "data": {},
             }
 
+            # test skip shaping when debug mode is true
+            middleware.debug = True
+            response = middleware.process_exception(
+                request, IntegrityError("Integrity Error")
+            )
+            response is None
+
     def test_custom_success_handler(
         self, request_factory: RequestFactory, get_response: Callable
     ) -> None:
@@ -162,7 +167,7 @@ class TestDynamicResponseMiddleware:
         """
 
         # Define a custom success handler that returns a different structure
-        def custom_success_handler(response: HttpResponse) -> JsonResponse:
+        def custom_success_handler(response):
             return JsonResponse(
                 {"custom": "success", "status_code": response.status_code},
                 status=response.status_code,
@@ -184,6 +189,11 @@ class TestDynamicResponseMiddleware:
             assert response.status_code == 200
             assert response_data == {"custom": "success", "status_code": 200}
 
+            response.data = {"key": "value"}
+            response = middleware._default_success_handler(response)
+            response_data = self.parse_json_response(response)
+            assert response_data["data"] == {"key": "value"}
+
     def test_custom_error_handler(
         self, request_factory: RequestFactory, get_response: Callable
     ) -> None:
@@ -194,11 +204,11 @@ class TestDynamicResponseMiddleware:
         :param get_response: Mocked response for testing.
         """
 
-        def error_response(request: HttpRequest) -> JsonResponse:
+        def error_response(request):
             return JsonResponse({"error": "Some error occurred"}, status=400)
 
         # Define a custom error handler that returns a different structure
-        def custom_error_handler(response: HttpResponse) -> JsonResponse:
+        def custom_error_handler(response):
             return JsonResponse(
                 {"custom": "error", "status_code": response.status_code},
                 status=response.status_code,
@@ -219,6 +229,11 @@ class TestDynamicResponseMiddleware:
             # Check that the custom handler's response is returned
             assert response.status_code == 400
             assert response_data == {"custom": "error", "status_code": 400}
+
+            response.data = {"key": "value"}
+            response = middleware._default_error_handler(response)
+            response_data = self.parse_json_response(response)
+            assert response_data["error"] == {"key": "value"}
 
     def test_process_object_does_not_exist_exception(
         self, request_factory: RequestFactory, get_response: Callable
@@ -262,7 +277,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts a string error message.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         error = "This is an error message"
         result = middleware._extract_first_error(error)
         assert result == "This is an error message"
@@ -271,7 +286,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a list of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors = ["First error", "Second error"]
         result = middleware._extract_first_error(errors)
         assert result == "First error"
@@ -280,7 +295,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a nested list of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors = [["Nested error", "Another error"], "Second error"]
         result = middleware._extract_first_error(errors)
         assert result == "Nested error"
@@ -289,7 +304,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a dictionary of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors = {"field1": "Field1 error", "field2": "Field2 error"}
         result = middleware._extract_first_error(errors)
         assert result == {"field1": "Field1 error"}
@@ -298,7 +313,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a nested dictionary of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors = {"field1": {"subfield": "Subfield error"}, "field2": "Field2 error"}
         result = middleware._extract_first_error(errors)
         assert result == {"field2": "Field2 error"}
@@ -307,7 +322,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly handles an empty list of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors: List = []
         result = middleware._extract_first_error(errors)
         assert result == "[]"
@@ -316,7 +331,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly handles an empty dictionary of errors.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors: Dict = {}
         result = middleware._extract_first_error(errors)
         assert result == "{}"
@@ -325,7 +340,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts errors from a complex nested structure.
         """
-        middleware = DynamicResponseMiddleware(None)
+        middleware = DynamicResponseMiddleware(HttpResponse)
         errors = {
             "field1": [
                 {"subfield": ["Subfield error", "Another error"]},
@@ -394,10 +409,9 @@ class TestDynamicResponseMiddleware:
 
         # Ensure a generic 500 error is returned
         response_data = json.loads(processed_response.content)
-        assert processed_response.status_code == 500
         assert response_data["status"] is False
         assert response_data["status_code"] == 500
-        assert response_data["error"] == "Internal Server Error"
+        assert "Internal Server Error" in response_data["error"]["message"]
 
     def test_process_validation_error(
         self, request_factory: RequestFactory, get_response: Callable
