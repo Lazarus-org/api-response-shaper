@@ -1,8 +1,8 @@
-from django.conf import settings
 import django
+from django.conf import settings
 
 
-def configure_django_settings():
+def configure_django_settings() -> None:
     if not settings.configured:
         settings.configure(
             DEBUG=True,
@@ -22,5 +22,6 @@ def configure_django_settings():
             USE_TZ=True,
         )
         django.setup()
+
 
 configure_django_settings()

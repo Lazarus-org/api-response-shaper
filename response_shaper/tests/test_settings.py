@@ -1,8 +1,10 @@
-import pytest
 import sys
-from django.core.checks import Error
+from unittest.mock import MagicMock, patch
+
+import pytest
 from django.conf import settings
-from unittest.mock import patch, MagicMock
+from django.core.checks import Error
+
 from response_shaper.settings.check import check_response_shaper_settings
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
 
@@ -11,22 +13,27 @@ pytestmark = [
     pytest.mark.skipif(sys.version_info < PYTHON_VERSION, reason=PYTHON_VERSION_REASON),
 ]
 
+
 class TestResponseShaperSettings:
     @patch("django.conf.settings")
     def test_valid_settings(self, mock_settings: MagicMock) -> None:
         """
         Test that valid settings produce no errors.
 
-        This test mocks valid configurations for `CUSTOM_RESPONSE_DEBUG`, 
-        `CUSTOM_RESPONSE_SUCCESS_HANDLER`, and `CUSTOM_RESPONSE_ERROR_HANDLER`. 
+        This test mocks valid configurations for `CUSTOM_RESPONSE_DEBUG`,
+        `CUSTOM_RESPONSE_SUCCESS_HANDLER`, and `CUSTOM_RESPONSE_ERROR_HANDLER`.
         It ensures that the check returns no errors when the settings are correct.
-        
+
         :param mock_settings: Mock of Django settings.
         """
         # Mock valid configuration values
         mock_settings.CUSTOM_RESPONSE_DEBUG = True
-        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = "myapp.handlers.CustomSuccessHandler"
-        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = "myapp.handlers.CustomErrorHandler"
+        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = (
+            "myapp.handlers.CustomSuccessHandler"
+        )
+        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = (
+            "myapp.handlers.CustomErrorHandler"
+        )
 
         # Run check and assert no errors
         errors = check_response_shaper_settings(None)
@@ -37,15 +44,19 @@ class TestResponseShaperSettings:
         """
         Test that invalid boolean settings return errors.
 
-        This test mocks an invalid boolean configuration for `CUSTOM_RESPONSE_DEBUG`. 
+        This test mocks an invalid boolean configuration for `CUSTOM_RESPONSE_DEBUG`.
         It ensures that the check returns an error if the setting is not a boolean value.
-        
+
         :param mock_settings: Mock of Django settings.
         """
         # Mock invalid boolean settings
         mock_settings.CUSTOM_RESPONSE_DEBUG = "invalid_bool"  # Should be bool
-        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = "myapp.handlers.CustomSuccessHandler"
-        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = "myapp.handlers.CustomErrorHandler"
+        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = (
+            "myapp.handlers.CustomSuccessHandler"
+        )
+        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = (
+            "myapp.handlers.CustomErrorHandler"
+        )
 
         # Run check and assert there is an error
         errors = check_response_shaper_settings(None)
@@ -59,9 +70,9 @@ class TestResponseShaperSettings:
         Test that invalid class paths return errors.
 
         This test mocks invalid class path settings for `CUSTOM_RESPONSE_SUCCESS_HANDLER`
-        and `CUSTOM_RESPONSE_ERROR_HANDLER`. It ensures that the check returns errors if 
+        and `CUSTOM_RESPONSE_ERROR_HANDLER`. It ensures that the check returns errors if
         these settings are not valid Python class paths.
-        
+
         :param mock_settings: Mock of Django settings.
         """
         # Mock invalid class path settings
@@ -81,10 +92,10 @@ class TestResponseShaperSettings:
         """
         Test that missing optional settings return no errors.
 
-        This test mocks valid optional settings by assigning `None` and an empty 
-        string to `CUSTOM_RESPONSE_SUCCESS_HANDLER` and `CUSTOM_RESPONSE_ERROR_HANDLER`, 
+        This test mocks valid optional settings by assigning `None` and an empty
+        string to `CUSTOM_RESPONSE_SUCCESS_HANDLER` and `CUSTOM_RESPONSE_ERROR_HANDLER`,
         respectively. It ensures that no errors are returned for missing optional settings.
-        
+
         :param mock_settings: Mock of Django settings.
         """
         # Mock valid optional settings (None or empty)
@@ -101,16 +112,20 @@ class TestResponseShaperSettings:
         """
         Test that None values for required settings return errors.
 
-        This test mocks a `None` value for the `CUSTOM_RESPONSE_DEBUG` setting, 
-        which is required to be a boolean. It ensures that an error is returned 
+        This test mocks a `None` value for the `CUSTOM_RESPONSE_DEBUG` setting,
+        which is required to be a boolean. It ensures that an error is returned
         when required settings are assigned a `None` value.
-        
+
         :param mock_settings: Mock of Django settings.
         """
         # Mock None values for required boolean settings
         mock_settings.CUSTOM_RESPONSE_DEBUG = None  # Should be bool
-        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = "myapp.handlers.CustomSuccessHandler"
-        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = "myapp.handlers.CustomErrorHandler"
+        mock_settings.CUSTOM_RESPONSE_SUCCESS_HANDLER = (
+            "myapp.handlers.CustomSuccessHandler"
+        )
+        mock_settings.CUSTOM_RESPONSE_ERROR_HANDLER = (
+            "myapp.handlers.CustomErrorHandler"
+        )
 
         # Run check and assert error for None boolean
         errors = check_response_shaper_settings(None)
