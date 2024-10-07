@@ -1,9 +1,10 @@
 import json
 from typing import Any, Callable, Optional, Union
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
 from django.utils.deprecation import MiddlewareMixin
 from rest_framework.views import exception_handler
 
@@ -21,7 +22,7 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             get_response: The next middleware or view to call.
 
         """
-        self.get_response = get_response
+        super().__init__(get_response)
         self.excluded_paths = response_shaper_config.excluded_paths
         self.debug = response_shaper_config.debug
         self.success_handler = self.get_dynamic_handler(
@@ -31,22 +32,22 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             response_shaper_config.error_handler, self._default_error_handler
         )
 
-    def __call__(self, request: HttpRequest) -> HttpResponse:
+    def __call__(self, request: HttpRequest) -> HttpResponseBase:
         """Process the request and response.
 
         Args:
             request: The incoming HTTP request.
 
         Returns:
-            HttpResponse: The structured HTTP response.
+            HttpResponseBase: The structured HTTP response.
 
         """
         response = self.get_response(request)
         return self.process_response(request, response)
 
     def process_response(
-        self, request: HttpRequest, response: HttpResponse
-    ) -> HttpResponse:
+        self, request: HttpRequest, response: HttpResponseBase
+    ) -> HttpResponseBase:
         """Modify API responses to follow a consistent structure, skipping HTML
         responses.
 
@@ -58,7 +59,7 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             HttpResponse: The processed HTTP response, with structured JSON if applicable.
 
         """
-        if self.debug or request.path in self.excluded_paths:
+        if self.shape_is_not_allowed(request):
             return response
 
         content_type = response.headers.get("Content-Type", "")
@@ -75,7 +76,7 @@ class DynamicResponseMiddleware(MiddlewareMixin):
 
     def process_exception(
         self, request: HttpRequest, exception: Exception
-    ) -> Optional[HttpResponse]:
+    ) -> Optional[HttpResponseBase]:
         """Handle exceptions and structure error responses consistently.
 
         Args:
@@ -87,8 +88,9 @@ class DynamicResponseMiddleware(MiddlewareMixin):
 
         """
         response = exception_handler(exception, None)
-        if response is not None:
-            return self.process_response(request, response)
+
+        if self.shape_is_not_allowed(request):
+            return response
 
         # Handle specific Django exceptions explicitly
         if isinstance(exception, IntegrityError):
@@ -99,7 +101,28 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             return self._build_error_response(404, "Object not found")
 
         # Generic 500 Internal Server Error
-        return self._build_error_response(500, "Internal Server Error")
+        detailed_error_message = self._get_detailed_error_info(exception)
+        return self._build_error_response(500, detailed_error_message)
+
+    def _get_detailed_error_info(self, exception: Exception) -> dict:
+        """Extract detailed error information including the exception message
+        and traceback.
+
+        Args:
+            exception: The exception that occurred.
+
+        Returns:
+            dict: A dictionary containing the error details and traceback.
+
+        """
+        import traceback
+
+        error_detail = {
+            "message": f"Internal Server Error: {str(exception)}",
+            "type": type(exception).__name__,
+            "traceback": traceback.format_exc() if settings.DEBUG else None,
+        }
+        return error_detail
 
     def _default_success_handler(self, response: HttpResponse) -> JsonResponse:
         """Default handler for successful responses.
@@ -206,3 +229,19 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             return import_string(handler_path)
         except ImportError:
             return default_handler
+
+    def shape_is_not_allowed(self, request: HttpRequest) -> bool:
+        """Determine if response shaping should be skipped for the current
+        request.
+
+        This method checks whether the middleware should skip response shaping
+        based on the `debug` mode or if the request path is in the list of excluded paths.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request object.
+
+        Returns:
+            bool: True if response shaping is not allowed (i.e., should be skipped), False otherwise.
+
+        """
+        return self.debug or request.path in self.excluded_paths
