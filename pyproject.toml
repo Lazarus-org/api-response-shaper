@@ -4,7 +4,7 @@ requires = [ "poetry-core" ]
 
 [tool.poetry]
 name = "api-response-shaper"
-version = "0.1.0"
+version = "1.0.0"
 description = "An essential package for structuring and optimizing your API responses."
 authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>" ]
 license = "MIT"
