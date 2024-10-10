@@ -6,7 +6,7 @@ requires = [ "poetry-core" ]
 name = "api-response-shaper"
 version = "1.0.0"
 description = "An essential package for structuring and optimizing your API responses."
-authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>" ]
+authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>", "MEHRSHAD-MIRSHEKARY <mehrshad_mirshekary@email.com>" ]
 license = "MIT"
 readme = "README.md"
 keywords = [ "django-api-shaper", "django", "shaper", "response-shaper" ]
@@ -24,11 +24,11 @@ classifiers = [
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
@@ -42,9 +42,9 @@ packages = [
 "Issues" = "https://github.com/lazarus-org/api-response-shaper/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.9,<4.0"
 django = [
-  { version = ">=4.2,<5.0", python = ">=3.8,<3.10" },
+  { version = ">=4.2,<5.0", python = ">=3.9,<3.10" },
   { version = ">=4.2,<5.3", python = ">=3.10" },      # Django 4.2 and 5.x for Python 3.10+
 ]
 djangorestframework = "^3.14.0"
