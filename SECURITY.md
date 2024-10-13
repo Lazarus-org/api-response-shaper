@@ -6,7 +6,8 @@ We actively support the following versions of `api-response-shaper` with securit
 
 | Version | Supported          |
 |---------| ------------------ |
-| 1.0.0   | ✅ Fully supported |
+| 1.1.0   | ✅ Fully supported |
+| 1.0.0   | ✅ Supported |
 
 ## Reporting a Vulnerability
 
