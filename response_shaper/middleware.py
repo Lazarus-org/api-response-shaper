@@ -1,21 +1,138 @@
 import json
-from typing import Any, Callable, Optional, Union
+from typing import Awaitable, Callable, Optional, Union
 
-from django.conf import settings
-from django.core.exceptions import ObjectDoesNotExist, ValidationError
-from django.db import IntegrityError
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
 from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
-from django.utils.deprecation import MiddlewareMixin
-from rest_framework.views import exception_handler
 
+from response_shaper.exceptions import ExceptionHandler
 from response_shaper.settings.conf import response_shaper_config
 
 
-class DynamicResponseMiddleware(MiddlewareMixin):
-    """A middleware to structure API responses in a consistent format based on
-    dynamic settings."""
+class BaseMiddleware:
+    """Base middleware class that supports both synchronous and asynchronous
+    modes.
 
-    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
+    This class provides a foundation for creating middleware that can handle both
+    synchronous and asynchronous requests. Subclasses must implement the `__sync_call__`
+    and `__acall__` methods to define their behavior.
+
+    Attributes:
+        sync_capable (bool): Indicates whether the middleware can handle synchronous requests.
+        async_capable (bool): Indicates whether the middleware can handle asynchronous requests.
+
+    """
+
+    sync_capable: bool = True
+    async_capable: bool = True
+
+    def __init__(
+        self,
+        get_response: Callable[
+            [HttpRequest], Union[HttpResponseBase, Awaitable[HttpResponseBase]]
+        ],
+    ) -> None:
+        """Initialize the middleware.
+
+        Args:
+            get_response: The next middleware or view to call. This can be either
+                synchronous or asynchronous.
+
+        """
+        self.get_response = get_response
+        self.async_mode = iscoroutinefunction(self.get_response)
+        if self.async_mode:
+            markcoroutinefunction(self)
+
+    def __repr__(self) -> str:
+        """Provides a string representation of the middleware.
+
+        Returns:
+            str: A string representation of the middleware, including the name of the
+                `get_response` function or class.
+
+        """
+        ger_response = getattr(
+            self.get_response,
+            "__qualname__",
+            self.get_response.__class__.__name__,
+        )
+        return f"<{self.__class__.__qualname__} get_response={ger_response}>"
+
+    def __call__(
+        self, request: HttpRequest
+    ) -> Union[HttpResponseBase, Awaitable[HttpResponseBase]]:
+        """Handles the incoming request, determining whether it's synchronous
+        or asynchronous.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request.
+
+        Returns:
+            Union[HttpResponseBase, Awaitable[HttpResponseBase]]: The HTTP response, either
+                synchronous or asynchronous.
+
+        """
+        if self.async_mode:
+            return self.__acall__(request)
+        return self.__sync_call__(request)
+
+    def __sync_call__(self, request: HttpRequest) -> HttpResponseBase:
+        """Processes synchronous requests.
+
+        Subclasses must implement this method to define how synchronous requests are handled.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request.
+
+        Returns:
+            HttpResponseBase: The HTTP response.
+
+        Raises:
+            NotImplementedError: If the method is not implemented by the subclass.
+
+        """
+        raise NotImplementedError("__sync_call__ must be implemented by subclass")
+
+    async def __acall__(self, request: HttpRequest) -> HttpResponseBase:
+        """Processes asynchronous requests.
+
+        Subclasses must implement this method to define how asynchronous requests are handled.
+
+        Args:
+            request (HttpRequest): The incoming HTTP request.
+
+        Returns:
+            HttpResponseBase: The HTTP response.
+
+        Raises:
+            NotImplementedError: If the method is not implemented by the subclass.
+
+        """
+        raise NotImplementedError("__acall__ must be implemented by subclass")
+
+
+class DynamicResponseMiddleware(BaseMiddleware):
+    """A middleware to structure API responses in a consistent format based on
+    dynamic settings.
+
+    This middleware modifies API responses to follow a consistent JSON structure for both
+    success and error cases. It can be configured to exclude certain paths and supports
+    custom success and error handlers.
+
+    Attributes:
+        excluded_paths (list): Paths for which response shaping should be skipped.
+        debug (bool): Whether debug mode is enabled.
+        success_handler (Callable): The handler for successful responses.
+        error_handler (Callable): The handler for error responses.
+
+    """
+
+    def __init__(
+        self,
+        get_response: Callable[
+            [HttpRequest], Union[HttpResponseBase, Awaitable[HttpResponseBase]]
+        ],
+    ):
         """Initialize the middleware with dynamic settings.
 
         Args:
@@ -32,7 +149,7 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             response_shaper_config.error_handler, self._default_error_handler
         )
 
-    def __call__(self, request: HttpRequest) -> HttpResponseBase:
+    def __sync_call__(self, request: HttpRequest) -> HttpResponseBase:
         """Process the request and response.
 
         Args:
@@ -44,6 +161,19 @@ class DynamicResponseMiddleware(MiddlewareMixin):
         """
         response = self.get_response(request)
         return self.process_response(request, response)
+
+    async def __acall__(self, request: HttpRequest) -> HttpResponseBase:
+        """Process the request and response asynchronously.
+
+        Args:
+            request: The incoming HTTP request.
+
+        Returns:
+            HttpResponseBase: The structured HTTP response.
+
+        """
+        response = await self.get_response(request)
+        return await self.process_response_async(request, response)
 
     def process_response(
         self, request: HttpRequest, response: HttpResponseBase
@@ -74,6 +204,33 @@ class DynamicResponseMiddleware(MiddlewareMixin):
         else:
             return self.error_handler(response)
 
+    async def process_response_async(
+        self, request: HttpRequest, response: HttpResponseBase
+    ) -> HttpResponseBase:
+        """Processes async responses, structuring JSON responses.
+
+        Args:
+            request: The incoming HTTP request.
+            response: The original HTTP response.
+
+        Returns:
+            HttpResponseBase: The processed HTTP response, with structured JSON if applicable.
+
+        """
+        if self.shape_is_not_allowed(request):
+            return response
+
+        content_type = response.headers.get("Content-Type", "")
+
+        if not content_type.startswith("application/json"):
+            return response
+
+        return await sync_to_async(
+            self.success_handler
+            if 200 <= response.status_code < 300
+            else self.error_handler
+        )(response)
+
     def process_exception(
         self, request: HttpRequest, exception: Exception
     ) -> Optional[HttpResponseBase]:
@@ -87,42 +244,10 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             Optional[HttpResponse]: The structured error response or None.
 
         """
-        response = exception_handler(exception, None)
-
         if self.shape_is_not_allowed(request):
-            return response
+            return None  # pass to let Django handle the exception
 
-        # Handle specific Django exceptions explicitly
-        if isinstance(exception, IntegrityError):
-            return self._build_error_response(400, str(exception))
-        if isinstance(exception, ValidationError):
-            return self._build_error_response(400, self._extract_first_error(exception))
-        if isinstance(exception, ObjectDoesNotExist):
-            return self._build_error_response(404, "Object not found")
-
-        # Generic 500 Internal Server Error
-        detailed_error_message = self._get_detailed_error_info(exception)
-        return self._build_error_response(500, detailed_error_message)
-
-    def _get_detailed_error_info(self, exception: Exception) -> dict:
-        """Extract detailed error information including the exception message
-        and traceback.
-
-        Args:
-            exception: The exception that occurred.
-
-        Returns:
-            dict: A dictionary containing the error details and traceback.
-
-        """
-        import traceback
-
-        error_detail = {
-            "message": f"Internal Server Error: {str(exception)}",
-            "type": type(exception).__name__,
-            "traceback": traceback.format_exc() if settings.DEBUG else None,
-        }
-        return error_detail
+        return ExceptionHandler.handle(exception)
 
     def _default_success_handler(self, response: HttpResponse) -> JsonResponse:
         """Default handler for successful responses.
@@ -160,54 +285,14 @@ class DynamicResponseMiddleware(MiddlewareMixin):
 
         """
         if hasattr(response, "data"):
-            error_message = self._extract_first_error(response.data)
+            error_message = ExceptionHandler.extract_first_error(response.data)
         else:
             # Decode content if 'data' is not available
-            error_message = json.loads(response.content.decode("utf-8"))["error"]
+            error_message = json.loads(response.content.decode("utf-8")).get("error")
 
-        return self._build_error_response(response.status_code, error_message)
-
-    def _build_error_response(
-        self, status_code: int, message: Union[str, dict]
-    ) -> JsonResponse:
-        """Helper method to build error responses consistently.
-
-        Args:
-            status_code: The HTTP status code for the error response.
-            message: The error message or data.
-
-        Returns:
-            JsonResponse: The structured error response.
-
-        """
-        return JsonResponse(
-            {"status": False, "status_code": status_code, "error": message, "data": {}},
-            status=status_code,
+        return ExceptionHandler.build_error_response(
+            response.status_code, error_message
         )
-
-    def _extract_first_error(self, error_data: Any) -> Union[str, dict]:
-        """Extract the first error message from various data structures (dict,
-        list, string). Stops at the first error encountered.
-
-        Args:
-            error_data: The error data structure.
-
-        Returns:
-            Union[str, dict]: The extracted error message or structure.
-
-        """
-        if isinstance(error_data, str):
-            return error_data
-        elif isinstance(error_data, list):
-            if error_data:
-                return self._extract_first_error(error_data[0])
-        elif isinstance(error_data, dict):
-            for key, value in error_data.items():
-                first_error = self._extract_first_error(value)
-                if isinstance(first_error, str):
-                    return {key: first_error}  # Return as a dict with the field name
-
-        return str(error_data)
 
     def get_dynamic_handler(
         self, handler_path: str, default_handler: Callable
@@ -235,7 +320,8 @@ class DynamicResponseMiddleware(MiddlewareMixin):
         request.
 
         This method checks whether the middleware should skip response shaping
-        based on the `debug` mode or if the request path is in the list of excluded paths.
+        based on the `debug` mode or if the request path starts with any of the
+        excluded paths.
 
         Args:
             request (HttpRequest): The incoming HTTP request object.
@@ -244,4 +330,11 @@ class DynamicResponseMiddleware(MiddlewareMixin):
             bool: True if response shaping is not allowed (i.e., should be skipped), False otherwise.
 
         """
-        return self.debug or request.path in self.excluded_paths
+        if self.debug:
+            return True
+
+        for excluded_path in self.excluded_paths:
+            if request.path.startswith(excluded_path):
+                return True
+
+        return False
