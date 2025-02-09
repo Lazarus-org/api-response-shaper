@@ -80,7 +80,8 @@ MIDDLEWARE = [
     # ...
 ]
 ```
-Once this middleware is added, all API responses will be dynamically structured. Whether it's a successful or an error response, the middleware ensures a consistent format across your API endpoints. You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format.
+Once this middleware is added, all API responses will be dynamically structured. Whether it's a successful or an error response, the middleware ensures a consistent format across your API endpoints.
+You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format.
 You can also configure the `api-response-shaper` for your project needs, for more details, please refer to the [Settings](#settings) section.
 
 ----
@@ -226,16 +227,64 @@ auth_api_response(
 
 ----
 
+## DynamicResponseMiddleware
+
+The `DynamicResponseMiddleware` is designed to structure API responses in a consistent format for both **synchronous** and **asynchronous** workflows.
+It ensures that all responses, whether successful or erroneous, follow a standardized JSON structure.
+This middleware is highly configurable and supports custom handlers for success and error responses.
+
+### Key Features
+
+- **Consistent Response Format**: Ensures all API responses follow a standardized structure, making it easier for clients to parse and handle responses.
+- **Async Support**: Seamlessly handles both synchronous and asynchronous requests, ensuring compatibility with Django's ASGI stack.
+- **Exception Handling**: Automatically catches and processes Django exceptions, returning structured error responses.
+- **Customizable Handlers**: Allows customization of success and error response formats via the `RESPONSE_SHAPER` configuration.
+
+---
+
 ## Exception Handling
 
-The middleware automatically handles Django exceptions and structures error responses for common errors:
+The middleware automatically handles Django exceptions and structures error responses for both **synchronous** and **asynchronous** workflows.
+It ensures consistent error responses for a wide range of exceptions, including:
 
-- `ObjectDoesNotExist` -> 404 Not Found
-- `IntegrityError` -> 400 Bad Request
-- `ValidationError` -> 400 Bad Request
-- Generic exceptions -> 500 Internal Server Error (with Traceback details if `settings.DEBUG` is `True`)
+### Common Exceptions
 
-You can customize the exception response format by providing custom error handlers via the `RESPONSE_SHAPER` configuration.
+- **404 Not Found**:
+  - `ObjectDoesNotExist`: The requested object was not found.
+  - `FieldDoesNotExist`: The requested field does not exist.
+  - `EmptyResultSet`: No results were found for the query.
+
+- **400 Bad Request**:
+  - `MultipleObjectsReturned`: Multiple objects were returned when only one was expected.
+  - `SuspiciousOperation`: A suspicious operation was detected (e.g., security issues).
+  - `DisallowedHost`: The request's host header is invalid or disallowed.
+  - `DisallowedRedirect`: The request attempted a disallowed redirect.
+  - `BadRequest`: A generic bad request error occurred.
+  - `FieldError`: An error occurred with a field in the request.
+  - `ValidationError`: Validation of the request data failed.
+  - `IntegrityError`: A database integrity constraint was violated.
+  - `DataError`: Invalid data was provided to the database.
+
+- **403 Forbidden**:
+  - `PermissionDenied`: The user does not have permission to perform the requested action.
+
+- **500 Internal Server Error**:
+  - `MiddlewareNotUsed`: A middleware component was not used.
+  - `ImproperlyConfigured`: The application is improperly configured.
+  - `ProgrammingError`: A database programming error occurred.
+  - `OperationalError`: A database operational error occurred.
+  - `InternalError`: An internal database error occurred.
+  - `DatabaseError`: A generic database error occurred.
+  - Generic exceptions: Any unexpected exception is caught and returned as a 500 error.
+
+### Async Support for Exception Handling
+
+With the addition of async support, the middleware now seamlessly handles exceptions in asynchronous contexts.
+The `ExceptionHandler` class processes exceptions and returns structured JSON responses,
+whether the request is synchronous or asynchronous. For example:
+
+- **Synchronous Workflow**: Exceptions are caught and processed in the `process_exception` method.
+- **Asynchronous Workflow**: Exceptions are handled in the same way, ensuring consistent error responses across both sync and async views.
 
 ----
 
