@@ -52,6 +52,7 @@ djangorestframework = "^3.14.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
 pytest-django = "^4.8.0"
+pytest-asyncio = "^0.25.3"
 pytest-cov = "^5.0.0"
 pylint = "^3.2.6"
 pylint-django = "^2.5.5"
@@ -137,6 +138,7 @@ disable = [
   "R0911",
 ]
 max-line-length = 88
+max-positional-arguments = 10
 ignore = [
   "tests",
   "migrations/*",
@@ -174,6 +176,7 @@ markers = [
   "decorators: Test decorators for api responses",
   "settings: Test settings",
   "middleware: Test Dynamic middleware",
+  "exceptions: Test exceptions and error handlers",
 ]
 
 norecursedirs = [
