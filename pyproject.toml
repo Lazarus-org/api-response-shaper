@@ -242,7 +242,7 @@ B104 = { check_typed_list = true }
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "1.1.0"
+version = "1.2.0"
 tag_format = "v$version"
 
 [tool.commitizen.settings]
