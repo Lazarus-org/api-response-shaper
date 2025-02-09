@@ -1,3 +1,10 @@
+## v1.2.0 (2025-02-10)
+
+### Feat
+
+- **middleware**: Add async support to DynamicResponseMiddleware
+- **exceptions**: Add centralized ExceptionHandler class for consistent error responses
+
 ## v1.1.0 (2024-10-13)
 
 ### ✨ Features
