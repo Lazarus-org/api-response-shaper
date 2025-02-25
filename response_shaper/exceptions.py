@@ -185,8 +185,8 @@ class ExceptionHandler:
         if isinstance(error_data, list) and error_data:
             return ExceptionHandler.extract_first_error(error_data[0])
         if isinstance(error_data, dict):
-            for key, value in error_data.items():
-                return {key: ExceptionHandler.extract_first_error(value)}
+            for value in error_data.values():
+                return ExceptionHandler.extract_first_error(value)
         return str(error_data)
 
     @staticmethod
