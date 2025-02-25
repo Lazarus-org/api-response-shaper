@@ -300,6 +300,7 @@ Here are the default settings that are automatically applied:
 # settings.py
 
 RESPONSE_SHAPER_DEBUG_MODE = False
+RESPONSE_SHAPER_RETURN_ERROR_AS_DICT = True
 RESPONSE_SHAPER_EXCLUDED_PATHS = ["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"]
 RESPONSE_SHAPER_SUCCESS_HANDLER = ""
 RESPONSE_SHAPER_ERROR_HANDLER = ""
@@ -312,6 +313,24 @@ RESPONSE_SHAPER_ERROR_HANDLER = ""
 - **Type**: `bool`
 - **Description**: When set to `True`, disables response shaping for debugging purposes.
 - **Default**: `False`
+
+`RESPONSE_SHAPER_RETURN_ERROR_AS_DICT`
+--------------------------------------
+
+- **Type**: `bool`
+- **Description**: Controls the format of dict error messages extracted by the ExceptionHandler. When `True`, errors with **nested dictionary** structure are returned as a dictionary containing the innermost key-value pair from nested error structures. When `False`, only the innermost error message is returned as a string. This applies to error responses shaped by the handler, particularly for validation.
+- **Default**: `True`
+
+**Example**:
+```python
+# With RESPONSE_SHAPER_RETURN_ERROR_AS_DICT = True
+error_input = {"field": {"detail": {"code": "invalid"}}}
+# Result: {"code": "invalid"}
+
+# With RESPONSE_SHAPER_RETURN_ERROR_AS_DICT = False
+error_input = {"field": {"detail": {"code": "invalid"}}}
+# Result: "invalid"
+```
 
 `RESPONSE_SHAPER_EXCLUDED_PATHS`
 --------------------------------
