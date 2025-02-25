@@ -125,12 +125,12 @@ class TestExceptionHandler:
         )
 
         # Test with a dictionary
-        assert ExceptionHandler.extract_first_error({"field": ["Invalid value"]}) == "Invalid value"
+        assert ExceptionHandler.extract_first_error({"field": ["Invalid value"]}) == {"field": "Invalid value"}
 
         # Test with nested structures
         assert ExceptionHandler.extract_first_error(
             {"field": [{"nested": "Invalid value"}]}
-        ) == "Invalid value"
+        ) == {"nested": "Invalid value"}
 
     def test_get_detailed_error_info(self):
         """Test the _get_detailed_error_info method in debug mode."""

@@ -32,6 +32,12 @@ def check_response_shaper_settings(app_configs: Any, **kwargs: Any) -> List[Erro
             response_shaper_config.debug, "RESPONSE_SHAPER_DEBUG_MODE"
         )
     )
+    errors.extend(
+        validate_boolean_setting(
+            response_shaper_config.return_dict_error,
+            "RESPONSE_SHAPER_RETURN_ERROR_AS_DICT",
+        )
+    )
 
     # Validate optional excluded path settings
     errors.extend(

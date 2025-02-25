@@ -26,6 +26,8 @@ from django.db import (
 )
 from django.http import JsonResponse
 
+from response_shaper.settings.conf import response_shaper_config
+
 
 class ExceptionHandler:
     """Handles exception responses consistently across the application.
@@ -165,19 +167,16 @@ class ExceptionHandler:
         """Extract the first error message from various data structures (dict,
         list, string). Stops at the first error encountered.
 
-        This method is useful for extracting the first error message from
-        complex error data structures, such as those returned by Django's
-        validation framework.
+        Behavior is controlled by settings.EXTRACT_ERROR_AS_DICT:
+        - If True: Returns the innermost dict with a string value
+        - If False: Returns the first string value
 
         Args:
             error_data (Any): The error data structure, which can be a string,
                 list, or dictionary.
 
         Returns:
-            Union[str, dict]: The extracted error message or structure. If the
-                input is a list, it returns the first element. If the input is
-                a dictionary, it returns the first key-value pair. If the input
-                is a string, it returns the string itself.
+            Union[str, dict]: The extracted error message or structure based on settings.
 
         """
         if isinstance(error_data, str):
@@ -185,8 +184,21 @@ class ExceptionHandler:
         if isinstance(error_data, list) and error_data:
             return ExceptionHandler.extract_first_error(error_data[0])
         if isinstance(error_data, dict):
-            for value in error_data.values():
-                return ExceptionHandler.extract_first_error(value)
+            if not error_data:
+                return str(error_data)
+            first_key = next(iter(error_data))
+            first_value = error_data[first_key]
+
+            # Recursively process the value
+            extracted = ExceptionHandler.extract_first_error(first_value)
+
+            if response_shaper_config.return_dict_error:
+                # If the extracted result is a string, return it as a single key-value dict
+                if isinstance(extracted, str):
+                    return {first_key: extracted}
+                # If it's already a dict (from deeper recursion), return it as-is
+                return extracted
+            return extracted
         return str(error_data)
 
     @staticmethod

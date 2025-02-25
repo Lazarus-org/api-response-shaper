@@ -290,7 +290,7 @@ class TestDynamicResponseMiddleware:
             response.data = {"key": "value"}
             response = middleware._default_error_handler(response)
             response_data = self.parse_json_response(response)
-            assert response_data["error"] == "value"
+            assert response_data["error"] == {'key': 'value'}
 
     def test_process_object_does_not_exist_exception(
         self, request_factory: RequestFactory, get_response: Callable
@@ -356,6 +356,7 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a dictionary of errors.
         """
+        response_shaper_config.return_dict_error = False
         errors = {"field1": "Field1 error", "field2": "Field2 error"}
         result = ExceptionHandler.extract_first_error(errors)
         assert result == "Field1 error"
@@ -364,9 +365,10 @@ class TestDynamicResponseMiddleware:
         """
         Test that the middleware correctly extracts the first error from a nested dictionary of errors.
         """
+        response_shaper_config.return_dict_error = True
         errors = {"field1": {"subfield": "Subfield error"}, "field2": "Field2 error"}
         result = ExceptionHandler.extract_first_error(errors)
-        assert result == "Subfield error"
+        assert result == {"subfield": "Subfield error"}
 
     def test_extract_empty_list(self) -> None:
         """
@@ -396,7 +398,7 @@ class TestDynamicResponseMiddleware:
             "field2": "Field2 error",
         }
         result = ExceptionHandler.extract_first_error(errors)
-        assert result == "Subfield error"
+        assert result == {"subfield": "Subfield error"}
 
     def test_skip_non_json_content_type(
         self, request_factory: RequestFactory, get_response: Callable
