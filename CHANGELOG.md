@@ -1,3 +1,13 @@
+## v1.2.1 (2025-02-26)
+
+### Fix
+
+- **exceptions**: `extract_first_error` returns string or dict-type errors dynamically from settings
+
+### Refactor
+
+- **exceptions**: Enhance `extract_first_error` for nested dicts to return one key-value pair
+
 ## v1.2.0 (2025-02-10)
 
 ### Feat
