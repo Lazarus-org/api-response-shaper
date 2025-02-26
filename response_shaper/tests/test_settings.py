@@ -26,6 +26,7 @@ class TestResponseShaperSettings:
         """
         # Mock valid configuration values
         mock_config.debug = True
+        mock_config.return_dict_error = True
         mock_config.excluded_paths = ["/admin/"]
         mock_config.success_handler = "myapp.handlers.custom_success_handler"
         mock_config.error_handler = "myapp.handlers.custom_error_handler"
@@ -47,25 +48,26 @@ class TestResponseShaperSettings:
         """
         # Mock invalid settings
         mock_config.debug = "invalid_bool"  # must be bool
+        mock_config.return_dict_error = "invalid_bool"  # must be bool
         mock_config.excluded_paths = {}  # must be a list
         mock_config.success_handler = "myapp.handlers.custom_success_handler"
         mock_config.error_handler = "myapp.handlers.custom_error_handler"
 
         # Run check and assert there is an error
         errors = check_response_shaper_settings(None)
-        assert len(errors) == 2
+        assert len(errors) == 3
         assert errors[0].id == "response_shaper.E001.RESPONSE_SHAPER_DEBUG_MODE"
         assert "should be a boolean value" in errors[0].msg
 
         mock_config.excluded_paths = [1, 2]
         errors = check_response_shaper_settings(None)
 
-        assert len(errors) == 2
+        assert len(errors) == 3
 
         mock_config.excluded_paths = ["admin"]  # path without /
         errors = check_response_shaper_settings(None)
 
-        assert len(errors) == 2
+        assert len(errors) == 3
 
     @patch("response_shaper.settings.check.response_shaper_config")
     def test_invalid_class_path_settings(self, mock_config: MagicMock) -> None:
@@ -80,6 +82,7 @@ class TestResponseShaperSettings:
         """
         # Mock invalid class path settings
         mock_config.debug = True
+        mock_config.return_dict_error = True
         mock_config.excluded_paths = ["/admin/"]
         mock_config.success_handler = 123  # invalid type
         mock_config.error_handler = 456  # invalid type
@@ -104,6 +107,7 @@ class TestResponseShaperSettings:
         """
         # Mock valid optional settings (None or empty)
         mock_config.debug = True
+        mock_config.return_dict_error = True
         mock_config.excluded_paths = ["/admin/"]
         mock_config.success_handler = None  # Optional and valid
         mock_config.error_handler = ""  # Empty string is valid

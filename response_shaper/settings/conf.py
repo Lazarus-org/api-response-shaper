@@ -14,6 +14,9 @@ class ResponseShaperConfig:
     def __init__(self) -> None:
         self.config_prefix = "RESPONSE_SHAPER_"
         self.debug = self.get_setting(f"{self.config_prefix}DEBUG_MODE", False)
+        self.return_dict_error = self.get_setting(
+            f"{self.config_prefix}RETURN_ERROR_AS_DICT", True
+        )
         self.excluded_paths = self.get_setting(
             f"{self.config_prefix}EXCLUDED_PATHS",
             ["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"],
