@@ -1,8 +1,7 @@
-import json
 from typing import Awaitable, Callable, Optional, Union
 
-from asgiref.sync import iscoroutinefunction, markcoroutinefunction, sync_to_async
-from django.http import HttpRequest, HttpResponse, HttpResponseBase, JsonResponse
+from asgiref.sync import iscoroutinefunction, markcoroutinefunction
+from django.http import HttpRequest, HttpResponseBase
 
 from response_shaper.exceptions import ExceptionHandler
 from response_shaper.settings.conf import response_shaper_config
@@ -112,18 +111,19 @@ class BaseMiddleware:
 
 
 class DynamicResponseMiddleware(BaseMiddleware):
-    """A middleware to structure API responses in a consistent format based on
-    dynamic settings.
+    """A middleware that structures raw Django exceptions into a consistent JSON
+    error format.
 
-    This middleware modifies API responses to follow a consistent JSON structure for both
-    success and error cases. It can be configured to exclude certain paths and supports
-    custom success and error handlers.
+    Response shaping for regular (successful and error) DRF responses is handled by
+    :class:`response_shaper.renderers.ShapedJSONRenderer`, which wraps the payload
+    before it is serialized and therefore avoids the extra decode/re-encode cycle
+    that middleware-based shaping incurred. This middleware now focuses solely on
+    catching unhandled Django exceptions and returning structured error responses,
+    for both synchronous and asynchronous workflows.
 
     Attributes:
-        excluded_paths (list): Paths for which response shaping should be skipped.
+        excluded_paths (list): Paths for which exception shaping should be skipped.
         debug (bool): Whether debug mode is enabled.
-        success_handler (Callable): The handler for successful responses.
-        error_handler (Callable): The handler for error responses.
 
     """
 
@@ -142,94 +142,32 @@ class DynamicResponseMiddleware(BaseMiddleware):
         super().__init__(get_response)
         self.excluded_paths = response_shaper_config.excluded_paths
         self.debug = response_shaper_config.debug
-        self.success_handler = self.get_dynamic_handler(
-            response_shaper_config.success_handler, self._default_success_handler
-        )
-        self.error_handler = self.get_dynamic_handler(
-            response_shaper_config.error_handler, self._default_error_handler
-        )
 
     def __sync_call__(self, request: HttpRequest) -> HttpResponseBase:
-        """Process the request and response.
+        """Process the request synchronously, passing the response through
+        untouched (shaping happens in the renderer).
 
         Args:
             request: The incoming HTTP request.
 
         Returns:
-            HttpResponseBase: The structured HTTP response.
+            HttpResponseBase: The response returned by the next handler.
 
         """
-        response = self.get_response(request)
-        return self.process_response(request, response)
+        return self.get_response(request)
 
     async def __acall__(self, request: HttpRequest) -> HttpResponseBase:
-        """Process the request and response asynchronously.
+        """Process the request asynchronously, passing the response through
+        untouched (shaping happens in the renderer).
 
         Args:
             request: The incoming HTTP request.
 
         Returns:
-            HttpResponseBase: The structured HTTP response.
+            HttpResponseBase: The response returned by the next handler.
 
         """
-        response = await self.get_response(request)
-        return await self.process_response_async(request, response)
-
-    def process_response(
-        self, request: HttpRequest, response: HttpResponseBase
-    ) -> HttpResponseBase:
-        """Modify API responses to follow a consistent structure, skipping HTML
-        responses.
-
-        Args:
-            request: The incoming HTTP request.
-            response: The original HTTP response.
-
-        Returns:
-            HttpResponse: The processed HTTP response, with structured JSON if applicable.
-
-        """
-        if self.shape_is_not_allowed(request):
-            return response
-
-        content_type = response.headers.get("Content-Type", "")
-
-        # Skip custom processing for non-JSON content types
-        if not content_type.startswith("application/json"):
-            return response
-
-        # Structure the API response for success or error cases
-        if 200 <= response.status_code < 300:
-            return self.success_handler(response)
-        else:
-            return self.error_handler(response)
-
-    async def process_response_async(
-        self, request: HttpRequest, response: HttpResponseBase
-    ) -> HttpResponseBase:
-        """Processes async responses, structuring JSON responses.
-
-        Args:
-            request: The incoming HTTP request.
-            response: The original HTTP response.
-
-        Returns:
-            HttpResponseBase: The processed HTTP response, with structured JSON if applicable.
-
-        """
-        if self.shape_is_not_allowed(request):
-            return response
-
-        content_type = response.headers.get("Content-Type", "")
-
-        if not content_type.startswith("application/json"):
-            return response
-
-        return await sync_to_async(
-            self.success_handler
-            if 200 <= response.status_code < 300
-            else self.error_handler
-        )(response)
+        return await self.get_response(request)
 
     def process_exception(
         self, request: HttpRequest, exception: Exception
@@ -249,77 +187,11 @@ class DynamicResponseMiddleware(BaseMiddleware):
 
         return ExceptionHandler.handle(exception)
 
-    def _default_success_handler(self, response: HttpResponse) -> JsonResponse:
-        """Default handler for successful responses.
-
-        Args:
-            response: The original HTTP response.
-
-        Returns:
-            JsonResponse: The modified success response with structured data.
-
-        """
-        if hasattr(response, "data"):
-            data = response.data
-        else:
-            # Decode the content if 'data' is not available
-            data = json.loads(response.content.decode("utf-8"))
-
-        custom_response = {
-            "status": True,
-            "status_code": response.status_code,
-            "error": None,
-            "data": data,  # Ensure that data is passed
-        }
-
-        return JsonResponse(custom_response, status=response.status_code)
-
-    def _default_error_handler(self, response: HttpResponse) -> JsonResponse:
-        """Default handler for error responses.
-
-        Args:
-            response: The original HTTP error response.
-
-        Returns:
-            JsonResponse: The modified error response with structured error data.
-
-        """
-        if hasattr(response, "data"):
-            error_message = ExceptionHandler.extract_first_error(response.data)
-        else:
-            # Decode content if 'data' is not available
-            error_message = json.loads(response.content.decode("utf-8")).get("error")
-
-        return ExceptionHandler.build_error_response(
-            response.status_code, error_message
-        )
-
-    def get_dynamic_handler(
-        self, handler_path: str, default_handler: Callable
-    ) -> Callable:
-        """Load the dynamic handler (success or error) based on the handler
-        path in settings.
-
-        Args:
-            handler_path: The dotted path to the custom handler.
-            default_handler: The default handler to fall back to.
-
-        Returns:
-            Callable: The handler function (either custom or default).
-
-        """
-        try:
-            from django.utils.module_loading import import_string
-
-            return import_string(handler_path)
-        except ImportError:
-            return default_handler
-
     def shape_is_not_allowed(self, request: HttpRequest) -> bool:
-        """Determine if response shaping should be skipped for the current
+        """Determine if exception shaping should be skipped for the current
         request.
 
-        This method checks whether the middleware should skip response shaping
+        This method checks whether the middleware should skip exception shaping
         based on the `debug` mode or if the request path starts with any of the
         excluded paths.
 
@@ -327,7 +199,7 @@ class DynamicResponseMiddleware(BaseMiddleware):
             request (HttpRequest): The incoming HTTP request object.
 
         Returns:
-            bool: True if response shaping is not allowed (i.e., should be skipped), False otherwise.
+            bool: True if shaping is not allowed (i.e., should be skipped), False otherwise.
 
         """
         if self.debug:

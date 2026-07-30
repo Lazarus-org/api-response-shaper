@@ -80,6 +80,9 @@ class TestBaseMiddleware:
 class TestDynamicResponseMiddleware:
     """
     Test cases for the DynamicResponseMiddleware.
+
+    Response shaping now lives in ``ShapedJSONRenderer``; this middleware only
+    passes responses through and structures raw Django exceptions.
     """
 
     def parse_json_response(self, response: HttpResponse) -> dict:
@@ -91,11 +94,12 @@ class TestDynamicResponseMiddleware:
         """
         return json.loads(response.content.decode("utf-8"))
 
-    def test_success_response(
+    def test_sync_passthrough(
         self, request_factory: RequestFactory, get_response: Callable
     ) -> None:
         """
-        Test that the middleware correctly processes a successful response.
+        Test that the middleware passes a synchronous response through untouched
+        (the response is shaped by the renderer, not the middleware).
 
         :param request_factory: Fixture to generate mock requests.
         :param get_response: Mocked response for testing.
@@ -103,71 +107,30 @@ class TestDynamicResponseMiddleware:
         request = request_factory.get("/api/test/")
         middleware = DynamicResponseMiddleware(get_response)
 
-        # Call the middleware
         response = middleware(request)
-        response_data = self.parse_json_response(response)
 
-        # Ensure the response is structured correctly
+        # The middleware must not alter the response any more.
         assert response.status_code == 200
-        assert response_data == {
-            "status": True,
-            "status_code": 200,
-            "error": None,
-            "data": {"key": "value"},
-        }
+        assert self.parse_json_response(response) == {"key": "value"}
 
-    def test_error_response(
-        self, request_factory: RequestFactory, get_response: Callable
-    ) -> None:
+    @pytest.mark.asyncio
+    async def test_async_passthrough(self, request_factory: RequestFactory) -> None:
         """
-        Test that the middleware correctly processes an error response.
+        Test that the middleware passes an asynchronous response through untouched.
 
         :param request_factory: Fixture to generate mock requests.
-        :param get_response: Mocked response for testing.
         """
 
-        def error_response(request):
-            return JsonResponse({"error": "Some error occurred"}, status=400)
+        async def mock_get_response(request: HttpRequest) -> HttpResponseBase:
+            return JsonResponse({"key": "value"}, status=200)
 
         request = request_factory.get("/api/test/")
-        middleware = DynamicResponseMiddleware(error_response)
+        middleware = DynamicResponseMiddleware(mock_get_response)
 
-        # Call the middleware
-        response = middleware(request)
-        response_data = self.parse_json_response(response)
+        response = await middleware(request)
 
-        # Ensure the response is structured correctly
-        assert response.status_code == 400
-        assert response_data == {
-            "status": False,
-            "status_code": 400,
-            "error": "Some error occurred",
-            "data": {},
-        }
-
-    def test_excluded_paths(
-        self, request_factory: RequestFactory, get_response: Callable
-    ) -> None:
-        """
-        Test that excluded paths are skipped by the middleware.
-
-        :param request_factory: Fixture to generate mock requests.
-        :param get_response: Mocked response for testing.
-        """
-        # Mock the config to include an excluded path
-        with patch.object(
-            response_shaper_config, "excluded_paths", new=["/api/excluded/"]
-        ):
-            request = request_factory.get("/api/excluded/")
-            middleware = DynamicResponseMiddleware(get_response)
-
-            # Call the middleware for an excluded path
-            response = middleware(request)
-            response_data = self.parse_json_response(response)
-
-            # Ensure that the middleware does not alter the response
-            assert response.status_code == 200
-            assert response_data == {"key": "value"}
+        assert response.status_code == 200
+        assert self.parse_json_response(response) == {"key": "value"}
 
     def test_process_exception(
         self, request_factory: RequestFactory, get_response: Callable
@@ -211,86 +174,26 @@ class TestDynamicResponseMiddleware:
             response = middleware.process_exception(
                 request, IntegrityError("Integrity Error")
             )
-            response is None
+            assert response is None
 
-    def test_custom_success_handler(
+    def test_process_exception_excluded_path(
         self, request_factory: RequestFactory, get_response: Callable
     ) -> None:
         """
-        Test that a custom success handler is used.
+        Test that exceptions are not shaped for excluded paths (Django is left to
+        handle them).
 
         :param request_factory: Fixture to generate mock requests.
         :param get_response: Mocked response for testing.
         """
-
-        # Define a custom success handler that returns a different structure
-        def custom_success_handler(response):
-            return JsonResponse(
-                {"custom": "success", "status_code": response.status_code},
-                status=response.status_code,
-            )
-
-        # Patch the import_string function to return the custom success handler
-        with patch(
-            "django.utils.module_loading.import_string",
-            return_value=custom_success_handler,
+        with patch.object(
+            response_shaper_config, "excluded_paths", new=["/api/excluded/"]
         ):
-            request = request_factory.get("/api/test/")
+            request = request_factory.get("/api/excluded/")
             middleware = DynamicResponseMiddleware(get_response)
 
-            # Call the middleware with a successful response
-            response = middleware(request)
-            response_data = self.parse_json_response(response)
-
-            # Check that the custom handler's response is returned
-            assert response.status_code == 200
-            assert response_data == {"custom": "success", "status_code": 200}
-
-            response.data = {"key": "value"}
-            response = middleware._default_success_handler(response)
-            response_data = self.parse_json_response(response)
-            assert response_data["data"] == {"key": "value"}
-
-    def test_custom_error_handler(
-        self, request_factory: RequestFactory, get_response: Callable
-    ) -> None:
-        """
-        Test that a custom error handler is used.
-
-        :param request_factory: Fixture to generate mock requests.
-        :param get_response: Mocked response for testing.
-        """
-
-        def error_response(request):
-            return JsonResponse({"error": "Some error occurred"}, status=400)
-
-        # Define a custom error handler that returns a different structure
-        def custom_error_handler(response):
-            return JsonResponse(
-                {"custom": "error", "status_code": response.status_code},
-                status=response.status_code,
-            )
-
-        # Patch the import_string function to return the custom error handler
-        with patch(
-            "django.utils.module_loading.import_string",
-            return_value=custom_error_handler,
-        ):
-            request = request_factory.get("/api/test/")
-            middleware = DynamicResponseMiddleware(error_response)
-
-            # Call the middleware with an error response
-            response = middleware(request)
-            response_data = self.parse_json_response(response)
-
-            # Check that the custom handler's response is returned
-            assert response.status_code == 400
-            assert response_data == {"custom": "error", "status_code": 400}
-
-            response.data = {"key": "value"}
-            response = middleware._default_error_handler(response)
-            response_data = self.parse_json_response(response)
-            assert response_data["error"] == {'key': 'value'}
+            result = middleware.process_exception(request, Exception("boom"))
+            assert result is None
 
     def test_process_object_does_not_exist_exception(
         self, request_factory: RequestFactory, get_response: Callable
@@ -400,47 +303,6 @@ class TestDynamicResponseMiddleware:
         result = ExceptionHandler.extract_first_error(errors)
         assert result == {"subfield": "Subfield error"}
 
-    def test_skip_non_json_content_type(
-        self, request_factory: RequestFactory, get_response: Callable
-    ) -> None:
-        """
-        Test that non-JSON responses are skipped by the middleware.
-
-        :param request_factory: Fixture to generate mock requests.
-        :param get_response: Mocked response for testing.
-        """
-        request = request_factory.get("/api/test/")
-        response = HttpResponse("<html></html>", content_type="text/html")
-        middleware = DynamicResponseMiddleware(get_response)
-
-        processed_response = middleware.process_response(request, response)
-
-        # Ensure the middleware returns the original response for non-JSON content
-        assert processed_response.content == response.content
-        assert processed_response.status_code == 200
-
-    def test_process_json_response(
-        self, request_factory: RequestFactory, get_response: Callable
-    ) -> None:
-        """
-        Test that JSON responses are processed correctly by the middleware.
-
-        :param request_factory: Fixture to generate mock requests.
-        :param get_response: Mocked response for testing.
-        """
-        request = request_factory.get("/api/test/")
-        response = JsonResponse({"key": "value"})
-        middleware = DynamicResponseMiddleware(get_response)
-
-        processed_response = middleware.process_response(request, response)
-
-        # Ensure the middleware processes JSON responses and structures them
-        response_data = json.loads(processed_response.content)
-        assert response_data["status"] is True
-        assert response_data["status_code"] == 200
-        assert response_data["data"] == {"key": "value"}
-        assert response_data["error"] is None
-
     def test_process_exception_handling(
         self, request_factory: RequestFactory, get_response: Callable
     ) -> None:
@@ -509,112 +371,3 @@ class TestDynamicResponseMiddleware:
         response_data = json.loads(processed_response.content)
         assert processed_response.status_code == 404
         assert response_data["error"] == "Object not found"
-
-    @pytest.mark.asyncio
-    async def test_async_success_response(
-        self, request_factory: RequestFactory
-    ) -> None:
-        """
-        Test that the middleware correctly processes an asynchronous successful response.
-
-        :param request_factory: Fixture to generate mock requests.
-        """
-
-        # Mock asynchronous get_response
-        async def mock_get_response(request: HttpRequest) -> HttpResponseBase:
-            return JsonResponse({"key": "value"}, status=200)
-
-        request = request_factory.get("/api/test/")
-        middleware = DynamicResponseMiddleware(mock_get_response)
-
-        # Call the middleware
-        response = await middleware(request)
-        response_data = self.parse_json_response(response)
-
-        # Ensure the response is structured correctly
-        assert response.status_code == 200
-        assert response_data == {
-            "status": True,
-            "status_code": 200,
-            "error": None,
-            "data": {"key": "value"},
-        }
-
-    @pytest.mark.asyncio
-    async def test_async_error_response(self, request_factory: RequestFactory) -> None:
-        """
-        Test that the middleware correctly processes an asynchronous error response.
-
-        :param request_factory: Fixture to generate mock requests.
-        """
-
-        # Mock asynchronous get_response
-        async def mock_get_response(request: HttpRequest) -> HttpResponseBase:
-            return JsonResponse({"error": "Some error occurred"}, status=400)
-
-        request = request_factory.get("/api/test/")
-        middleware = DynamicResponseMiddleware(mock_get_response)
-
-        # Call the middleware
-        response = await middleware(request)
-        response_data = self.parse_json_response(response)
-
-        # Ensure the response is structured correctly
-        assert response.status_code == 400
-        assert response_data == {
-            "status": False,
-            "status_code": 400,
-            "error": "Some error occurred",
-            "data": {},
-        }
-
-    @pytest.mark.asyncio
-    async def test_async_skip_non_json_content_type(
-        self, request_factory: RequestFactory
-    ) -> None:
-        """
-        Test that non-JSON responses are skipped by the middleware in async mode.
-
-        :param request_factory: Fixture to generate mock requests.
-        """
-
-        # Mock asynchronous get_response
-        async def mock_get_response(request: HttpRequest) -> HttpResponseBase:
-            return HttpResponse("<html></html>", content_type="text/html")
-
-        request = request_factory.get("/api/test/")
-        middleware = DynamicResponseMiddleware(mock_get_response)
-
-        # Call the middleware
-        response = await middleware(request)
-
-        # Ensure the middleware returns the original response for non-JSON content
-        assert response.content == b"<html></html>"
-        assert response.status_code == 200
-        assert response.headers["Content-Type"] == "text/html"
-
-    @pytest.mark.asyncio
-    async def test_async_excluded_paths(self, request_factory: RequestFactory) -> None:
-        """
-        Test that excluded paths are skipped by the middleware in async mode.
-
-        :param request_factory: Fixture to generate mock requests.
-        """
-        # Mock the config to include an excluded path
-        with patch.object(
-            response_shaper_config, "excluded_paths", new=["/api/excluded/"]
-        ):
-            # Mock asynchronous get_response
-            async def mock_get_response(request: HttpRequest) -> HttpResponseBase:
-                return JsonResponse({"key": "value"}, status=200)
-
-            request = request_factory.get("/api/excluded/")
-            middleware = DynamicResponseMiddleware(mock_get_response)
-
-            # Call the middleware for an excluded path
-            response = await middleware(request)
-            response_data = self.parse_json_response(response)
-
-            # Ensure that the middleware does not alter the response
-            assert response.status_code == 200
-            assert response_data == {"key": "value"}

@@ -14,7 +14,8 @@
 
 ## Features
 
-- **Dynamic Middleware**: Automatically structures API responses for successful and error cases.
+- **Shaped JSON Renderer**: A DRF `JSONRenderer` subclass that structures successful and error responses at render time, serializing the payload only once (no middleware decode/re-encode cycle).
+- **Dynamic Middleware**: Structures raw Django exceptions into a consistent error format for successful and error cases.
 - **Customizable Handlers**: Easily switch between different response formats using decorators.
 - **Pre-built Response Types**: Supports a variety of response types, including:
   - Standard API responses
@@ -69,9 +70,42 @@ INSTALLED_APPS = [
 ]
 ```
 
-3. **Configure Middleware**:
+3. **Configure the Renderer**:
 
-Add `DynamicResponseMiddleware` middleware to the MIDDLEWARE list in your Django `settings.py`:
+Response shaping is done by `ShapedJSONRenderer`, a subclass of DRF's `JSONRenderer`. It wraps
+`response.data` into the final envelope **before** it is serialized, so the payload is serialized
+only once — avoiding the extra decode/re-encode cycle that a middleware incurs when it reads an
+already-rendered response and rebuilds it. This gives a noticeable performance boost for large
+payloads.
+
+Enable it globally in your DRF settings:
+
+```python
+REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "response_shaper.renderers.ShapedJSONRenderer",
+        # ... any other renderers (e.g. BrowsableAPIRenderer)
+    ],
+}
+```
+
+Or opt in per view/viewset with `renderer_classes`:
+
+```python
+from response_shaper.renderers import ShapedJSONRenderer
+
+class MyView(APIView):
+    renderer_classes = [ShapedJSONRenderer]
+```
+
+Once configured, every successful (2xx) response is shaped as
+`{"status": True, "status_code": ..., "error": None, "data": ...}` and every error response as
+`{"status": False, "status_code": ..., "error": ..., "data": {}}`. You can customize both shapes
+via the [Settings](#settings) (`RESPONSE_SHAPER_SUCCESS_HANDLER` / `RESPONSE_SHAPER_ERROR_HANDLER`).
+
+4. **Configure Middleware** (for exception shaping):
+
+Add `DynamicResponseMiddleware` to the `MIDDLEWARE` list in your Django `settings.py`:
 
 ```python
 MIDDLEWARE = [
@@ -80,8 +114,11 @@ MIDDLEWARE = [
     # ...
 ]
 ```
-Once this middleware is added, all API responses will be dynamically structured. Whether it's a successful or an error response, the middleware ensures a consistent format across your API endpoints.
-You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format.
+
+This middleware no longer shapes successful/error responses (that is the renderer's job). Its
+sole responsibility is catching **unhandled Django exceptions** (e.g. `ObjectDoesNotExist`,
+`IntegrityError`, `ValidationError`) that never reach the DRF renderer, and returning a structured
+JSON error response for them — for both synchronous and asynchronous workflows.
 You can also configure the `api-response-shaper` for your project needs, for more details, please refer to the [Settings](#settings) section.
 
 ----
@@ -125,24 +162,26 @@ def paginated_view(request):
 
 If you want more control over the response structure, you can define custom handlers. Use the `RESPONSE_SHAPER` settings to specify the paths to your custom handlers. for more details, please refer to the [Settings](#settings).
 
+A custom handler used by `ShapedJSONRenderer` is a callable with the signature
+`(data, status_code, renderer_context) -> dict`. It receives the raw view data and must return the
+envelope structure to be serialized.
+
 For example, define a custom success handler in `myapp.responses`:
 
 ```python
 # myapp/responses.py
-from rest_framework.response import Response
-
-def custom_success_handler(response):
-    return Response({
+def custom_success_handler(data, status_code, renderer_context):
+    return {
         "custom_status": "success",
-        "code": response.status_code,
-        "payload": response.data
-    }, status=response.status_code)
+        "code": status_code,
+        "payload": data,
+    }
 ```
 
 Then configure this handler in your settings:
 
 ```python
-RESPONSE_SHAPER_SUCCESS_HANDLER = "path.to_your.custom_success_handler"
+RESPONSE_SHAPER_SUCCESS_HANDLER = "myapp.responses.custom_success_handler"
 ```
 
 ----
@@ -227,18 +266,32 @@ auth_api_response(
 
 ----
 
-## DynamicResponseMiddleware
+## ShapedJSONRenderer
 
-The `DynamicResponseMiddleware` is designed to structure API responses in a consistent format for both **synchronous** and **asynchronous** workflows.
-It ensures that all responses, whether successful or erroneous, follow a standardized JSON structure.
-This middleware is highly configurable and supports custom handlers for success and error responses.
+The `ShapedJSONRenderer` is the primary mechanism for structuring API responses into a consistent
+format. Because it shapes the payload during DRF's normal rendering pass, the response is
+serialized only once — there is no second decode/encode cycle, which keeps it fast even for large
+payloads.
 
 ### Key Features
 
-- **Consistent Response Format**: Ensures all API responses follow a standardized structure, making it easier for clients to parse and handle responses.
+- **Consistent Response Format**: Wraps every successful (2xx) and error response in a standardized envelope, making it easier for clients to parse and handle responses.
+- **Single Serialization Pass**: Shapes `response.data` before serialization instead of re-processing an already-rendered response — significantly faster than middleware-based shaping.
+- **Customizable Handlers**: Allows customization of success and error response formats via the `RESPONSE_SHAPER` configuration (`(data, status_code, renderer_context) -> dict`).
+- **Excluded Paths & Debug Aware**: Skips shaping for excluded paths or when debug mode is enabled.
+
+## DynamicResponseMiddleware
+
+The `DynamicResponseMiddleware` complements the renderer by catching **unhandled Django exceptions**
+that never reach the DRF renderer (e.g. a `ValidationError` raised deep in a view), and structuring
+them into the same consistent JSON error format for both **synchronous** and **asynchronous**
+workflows. It no longer shapes normal successful/error responses — that is the renderer's job.
+
+### Key Features
+
 - **Async Support**: Seamlessly handles both synchronous and asynchronous requests, ensuring compatibility with Django's ASGI stack.
-- **Exception Handling**: Automatically catches and processes Django exceptions, returning structured error responses.
-- **Customizable Handlers**: Allows customization of success and error response formats via the `RESPONSE_SHAPER` configuration.
+- **Exception Handling**: Automatically catches and processes raw Django exceptions, returning structured error responses.
+- **Excluded Paths & Debug Aware**: Skips exception shaping for excluded paths or when debug mode is enabled.
 
 ---
 
@@ -344,15 +397,15 @@ error_input = {"field": {"detail": {"code": "invalid"}}}
 ---------------------------------
 
 - **Type**: `str`
-- **Description**: Path to the custom handler to manage successful responses. you can specify a custom handler if you want to modify the success response format.
-- **Default**: Default Success handler in `DynamicResponseMiddleware`
+- **Description**: Dotted path to a custom handler used by `ShapedJSONRenderer` to build the successful response envelope. The handler signature is `(data, status_code, renderer_context) -> dict`. An empty or unimportable value falls back to the default handler.
+- **Default**: Default success handler in `ShapedJSONRenderer`
 
 `RESPONSE_SHAPER_ERROR_HANDLER`
 -------------------------------
 
 - **Type**: `str`
-- **Description**: Path to the custom handler to manage error responses. Similar to the success handler, it allows you to provide your own handler to modify the error response format if the default behavior does not meet your needs.
-- **Default**: Default Error handler in `DynamicResponseMiddleware`
+- **Description**: Dotted path to a custom handler used by `ShapedJSONRenderer` to build the error response envelope. Same signature as the success handler, `(data, status_code, renderer_context) -> dict`. An empty or unimportable value falls back to the default handler.
+- **Default**: Default error handler in `ShapedJSONRenderer`
 
 
 Thank you for using `api-response-shaper`. We hope this package enhances your Django application's API responses. If you have any questions or issues, feel free to open an issue on our [GitHub repository](https://github.com/lazarus-org/api-response-shaper).
