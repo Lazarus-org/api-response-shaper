@@ -177,6 +177,7 @@ markers = [
   "settings: Test settings",
   "middleware: Test Dynamic middleware",
   "exceptions: Test exceptions and error handlers",
+  "renderers: Test the shaped JSON renderer",
 ]
 
 norecursedirs = [
