@@ -2,7 +2,7 @@
 
 ### Feat
 
-- **middleware**: harden response shaping
+- **middleware**: harden response shaping and support Python 3.10-3.14, Django 5.2-6.1, and DRF 3.18
 
 ## v1.2.1 (2025-02-26)
 

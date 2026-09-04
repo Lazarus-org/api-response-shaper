@@ -16,8 +16,22 @@ jobs:
             tox-env: py311-django52-drf318
           - python-version: '3.12'
             tox-env: py312-django52-drf318
+          - python-version: '3.12'
+            tox-env: py312-django60-drf318
+          - python-version: '3.12'
+            tox-env: py312-django61-drf318
           - python-version: '3.13'
             tox-env: py313-django52-drf318
+          - python-version: '3.13'
+            tox-env: py313-django60-drf318
+          - python-version: '3.13'
+            tox-env: py313-django61-drf318
+          - python-version: '3.14'
+            tox-env: py314-django52-drf318
+          - python-version: '3.14'
+            tox-env: py314-django60-drf318
+          - python-version: '3.14'
+            tox-env: py314-django61-drf318
 
     steps:
       - uses: actions/checkout@v4
@@ -39,10 +53,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.13
+      - name: Set up Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.14'
 
       - name: Install development dependencies
         run: |

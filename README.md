@@ -30,11 +30,11 @@
 
 ## Project Detail
 
-- Language: Python >= 3.10, < 3.14
-- Framework: Django >= 5.2, < 5.3
+- Language: Python >= 3.10, < 3.15
+- Framework: Django >= 5.2, < 6.2 (Django 6.x requires Python >= 3.12)
 - Django REST Framework: >= 3.18, < 3.19
 
-The CI compatibility matrix covers Python 3.10-3.13, Django 5.2 LTS, and DRF 3.18. Python 3.10 remains supported until October 2026. DRF 3.18 uses dictionary-shaped errors for list serializers (`many=True`); structured error extraction preserves this upstream representation.
+The CI compatibility matrix covers Python 3.10-3.14, Django 5.2 LTS and 6.0-6.1, and DRF 3.18. Python 3.10 remains supported until October 2026. DRF 3.18 uses dictionary-shaped errors for list serializers (`many=True`); structured error extraction preserves this upstream representation.
 
 
 ## Documentation
