@@ -15,23 +15,23 @@ we’re thrilled that you want to contribute to `api-response-shaper`! to ensure
     git checkout -b feature/your-feature-name
     ```
 
-3. **Install Dependencies**: Use Poetry to install the project’s dependencies. if poetry isn’t installed, refer to the [Poetry installation guide](https://python-poetry.org/docs/#installation)
+3. **Install Dependencies**: Use uv to install the project’s dependencies. If uv is not installed, refer to the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/)
     ```bash
-    poetry install
+    uv sync
     ```
 
 4. **Write Code and Tests**: Make your changes and write tests for your new code. Ensure that all tests pass:
    ```bash
-    poetry run pytest
+    uv run pytest
     ```
 5. **Run Code Quality Checks**: Ensure code quality with Pylint:
     ```bash
-    poetry run pylint response_shaper
+    uv run pylint response_shaper
     ```
 
 6. **Commit Your Changes**: Use Commitizen to commit your changes according to the Conventional Commits specification:
     ```bash
-    cz commit
+    uv run cz commit
     ```
 
 7. **Push and Create a PR**: Push your changes to your fork on GitHub and open a pull request:
@@ -48,13 +48,13 @@ we’re thrilled that you want to contribute to `api-response-shaper`! to ensure
    ```
    Next, run the following command to bump the version:
     ```bash
-    cz bump
+    uv run cz bump
     ```
    Commitizen will analyze your commit messages and increment the version (major, minor, or patch) according to the Conventional Commits specification.
 
 9. **Generate Changelog**: Create a changelog with Commitizen(only for the new version tag):
     ```bash
-    cz changelog --incremental
+    uv run cz changelog --incremental
     ```
     the `--incremental` option limits changelog updates to only the new version tag, leaving previous entries unchanged. After generating the changelog, add it to the staging area and commit it manually:
 
@@ -72,12 +72,10 @@ we’re thrilled that you want to contribute to `api-response-shaper`! to ensure
    ```
    The first command pushes your code changes, and the second command pushes the new version tag created by Commitizen. This ensures that the tag is available on GitHub, which is useful for creating releases and tracking versioned changes.
 
-11. **Export Dependencies**: Export the project dependencies for development and production:
+11. **Lock Dependencies**: Refresh and verify the uv lockfile after dependency changes:
     ```bash
-    pip install poetry-plugin-export
-
-    poetry export -f requirements.txt --output packages/requirements.txt --without-hashes
-    poetry export -f requirements.txt --with dev --output packages/requirements-dev.txt --without-hashes
+    uv lock
+    uv lock --check
     ```
 
 ## Commitizen Message Rule

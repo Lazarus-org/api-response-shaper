@@ -36,16 +36,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Install uv and Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: ${{ matrix.python-version }}
+          version: "0.12.9"
+          enable-cache: true
 
-      - name: Install tox
-        run: python -m pip install --upgrade pip "tox>=4.16,<5"
+      - name: Install development dependencies
+        run: uv sync --locked --dev
 
       - name: Run compatibility tests
-        run: tox -e ${{ matrix.tox-env }}
+        run: uv run tox -e ${{ matrix.tox-env }}
 
   quality:
     name: Quality and coverage
@@ -53,22 +55,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python 3.14
-        uses: actions/setup-python@v5
+      - name: Install uv and Python 3.14
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: '3.14'
+          version: "0.12.9"
+          enable-cache: true
 
       - name: Install development dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
-          pip install "pytest>=8.3,<9" "pytest-asyncio>=0.25,<0.26" "pytest-cov>=5,<6" "pytest-django>=4.8,<5" "pre-commit>=3.5,<4"
+        run: uv sync --locked --dev
 
       - name: Run tests with coverage
-        run: pytest --cov=response_shaper --cov-report=xml
+        run: uv run pytest --cov=response_shaper --cov-report=xml
 
       - name: Run pre-commit hooks
-        run: pre-commit run --all-files --config=.pre-commit-config-ci.yaml
+        run: uv run pre-commit run --all-files --config=.pre-commit-config-ci.yaml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5

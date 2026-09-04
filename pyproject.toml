@@ -1,15 +1,20 @@
 [build-system]
-build-backend = "poetry.core.masonry.api"
-requires = [ "poetry-core" ]
+build-backend = "uv_build"
+requires = [ "uv-build>=0.12.9,<0.13" ]
 
-[tool.poetry]
+[project]
 name = "api-response-shaper"
 version = "1.4.0"
 description = "An essential package for structuring and optimizing your API responses."
-license = "MIT"
-authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>", "MEHRSHAD-MIRSHEKARY <mehrshad_mirshekary@email.com>" ]
 readme = "README.md"
 keywords = [ "django", "django-api-shaper", "response-shaper", "shaper" ]
+license = "MIT"
+license-files = [ "LICENSE" ]
+authors = [
+  { name = "ARYAN-NIKNEZHAD", email = "aryan513966@gmail.com" },
+  { name = "MEHRSHAD-MIRSHEKARY", email = "mehrshad_mirshekary@email.com" },
+]
+requires-python = ">=3.10,<3.15"
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Web Environment",
@@ -18,10 +23,8 @@ classifiers = [
   "Framework :: Django :: 6.0",
   "Framework :: Django :: 6.1",
   "Intended Audience :: Developers",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
@@ -30,37 +33,41 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-packages = [
-  { include = "response_shaper" },
+dependencies = [
+  "django>=5.2,<6.2; python_version>='3.12'",
+  "django>=5.2,<6; python_version<'3.12'",
+  "djangorestframework>=3.18,<3.19",
 ]
-dependencies.python = ">=3.10,<3.15"
-dependencies.django = [
-  { version = ">=5.2,<6.0", python = ">=3.10,<3.12" },
-  { version = ">=5.2,<6.2", python = ">=3.12,<3.15" },
-]
-dependencies.djangorestframework = ">=3.18,<3.19"
-group.dev.dependencies.bandit = { extras = [ "toml" ], version = "^1.7.9" }
-group.dev.dependencies.black = "^24.4.2"
-group.dev.dependencies.codecov = "^2.1.13"
-group.dev.dependencies.commitizen = "^3.28.0"
-group.dev.dependencies.django-stubs = "^5.0.4"
-group.dev.dependencies.docformatter = "^1.7.5"
-group.dev.dependencies.isort = "^5.13.2"
-group.dev.dependencies.mypy = "^1.11.1"
-group.dev.dependencies.pre-commit = "^3.5.0"
-group.dev.dependencies.pylint = "^3.2.6"
-group.dev.dependencies.pylint-django = "^2.5.5"
-group.dev.dependencies.pytest = "^8.3.2"
-group.dev.dependencies.pytest-asyncio = "^0.25.3"
-group.dev.dependencies.pytest-cov = "^5.0.0"
-group.dev.dependencies.pytest-django = "^4.8.0"
-group.dev.dependencies.python-semantic-release = "^9.8.8"
-group.dev.dependencies.sphinx = "^6.2.1"
-group.dev.dependencies.sphinx-rtd-theme = "^2.0.0"
-group.dev.dependencies.tox = "^4.16.0"
 urls."Source Code" = "https://github.com/Lazarus-org/api-response-shaper"
 urls.Changelog = "https://github.com/lazarus-org/api-response-shaper/blob/main/CHANGELOG.md"
 urls.Issues = "https://github.com/lazarus-org/api-response-shaper/issues"
+
+[dependency-groups]
+dev = [
+  "bandit[toml]>=1.7.9,<2",
+  "black>=24.4.2,<25",
+  "codecov>=2.1.13,<3",
+  "commitizen>=3.28,<4",
+  "django-stubs>=5.0.4,<6",
+  "docformatter>=1.7.5,<2",
+  "isort>=5.13.2,<6",
+  "mypy>=1.11.1,<2",
+  "pre-commit>=3.5,<4",
+  "pylint>=3.2.6,<4",
+  "pylint-django>=2.5.5,<3",
+  "pytest>=8.3.2,<9",
+  "pytest-asyncio>=0.25.3,<0.26",
+  "pytest-cov>=5,<6",
+  "pytest-django>=4.8,<5",
+  "python-semantic-release>=9.8.8,<10",
+  "sphinx>=6.2.1,<7",
+  "sphinx-rtd-theme>=2,<3",
+  "tox>=4.16,<5",
+]
+
+[tool.uv]
+build-backend.module-name = "response_shaper"
+build-backend.module-root = ""
 
 [tool.black]
 line-length = 88

@@ -32,10 +32,10 @@ We’re excited that you’re interested in contributing to `api-response-shaper
 
 3. **Install Dependencies:**
 
-   Install the necessary dependencies using `Poetry`. If Poetry isn't installed on your machine, you can find installation instructions on the [Poetry website](https://python-poetry.org/docs/#installation).
+   Install the project and development dependencies using `uv`. If uv is not installed, follow the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/).
 
    ```bash
-   poetry install
+   uv sync
    ```
 
 4. **Create a Feature Branch:**
@@ -51,7 +51,7 @@ We’re excited that you’re interested in contributing to `api-response-shaper
 We use `pytest` for running tests. Before submitting your changes, ensure that all tests pass:
 
    ```bash
-   poetry run pytest
+   uv run pytest
    ```
 
 If you’re adding a new feature or fixing a bug, don’t forget to write tests to cover your changes.
@@ -62,13 +62,13 @@ If you’re adding a new feature or fixing a bug, don’t forget to write tests 
 Maintaining a consistent code style is crucial. We use `black` for code formatting and `isort` for import sorting. Make sure your code adheres to these styles:
 
    ```bash
-    poetry run black .
-    poetry run isort .
+    uv run black .
+    uv run isort .
    ```
 For linting, `pylint` is used to enforce style and catch potential errors:
 
    ```bash
-   poetry run pylint api-response-shaper
+   uv run pylint api-response-shaper
    ```
 
 ## Utilizing Pre-commit Hooks
@@ -78,7 +78,7 @@ Pre-commit hooks are used to automatically check and format code before you make
 1. **Install Pre-commit:**
 
    ```bash
-   poetry add --group dev pre-commit
+   uv add --dev pre-commit
    ```
 
 2. **Set Up the Hooks:**
@@ -86,14 +86,14 @@ Pre-commit hooks are used to automatically check and format code before you make
    Install the pre-commit hooks by running:
 
    ```bash
-   poetry run pre-commit install
+   uv run pre-commit install
    ```
 3. **Manual Hook Execution (Optional):**
 
    To run all hooks manually on your codebase:
 
    ```bash
-   poetry run pre-commit run --all-files
+   uv run pre-commit run --all-files
    ```
 
 ## Creating a Pull Request
@@ -139,7 +139,7 @@ Found a bug or have a feature request? We’d love to hear from you!
 
 Here are some additional resources that might be helpful:
 
-- [Poetry Documentation](https://python-poetry.org/docs/)
+- [uv Documentation](https://docs.astral.sh/uv/)
 - [Black Documentation](https://black.readthedocs.io/en/stable/)
 - [isort Documentation](https://pycqa.github.io/isort/)
 - [pytest Documentation](https://docs.pytest.org/en/stable/)
