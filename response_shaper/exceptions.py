@@ -200,9 +200,10 @@ class ExceptionHandler:
     def _validation_error_data(cls, exception: ValidationError) -> Any:
         """Return structured Django ValidationError data for non-legacy modes.
 
-        The legacy ``first`` strategy historically stringified the exception
-        object itself. Preserve that exact behavior for compatibility, while
-        newer strategies receive Django's serializable message structures.
+        The legacy ``first`` strategy historically stringified the
+        exception object itself. Preserve that exact behavior for
+        compatibility, while newer strategies receive Django's
+        serializable message structures.
 
         """
         if response_shaper_config.error_extraction == "first":
@@ -232,14 +233,15 @@ class ExceptionHandler:
     def extract_smart_error(cls, error_data: Any) -> Any:
         """Extract the first error without destroying structured payloads.
 
-        A mapping whose values are all terminal values is treated as one atomic
-        error payload and is returned intact. Mappings or sequences containing
-        nested containers are treated as error trees and traversed until the
-        first error is found.
+        A mapping whose values are all terminal values is treated as one
+        atomic error payload and is returned intact. Mappings or
+        sequences containing nested containers are treated as error
+        trees and traversed until the first error is found.
 
-        This intentionally uses structure rather than key names, so consumers
-        can use arbitrary machine-readable fields such as ``code``, ``detail``,
-        ``parameter``, ``meta``, or domain-specific equivalents.
+        This intentionally uses structure rather than key names, so
+        consumers can use arbitrary machine-readable fields such as
+        ``code``, ``detail``, ``parameter``, ``meta``, or domain-
+        specific equivalents.
 
         """
         if isinstance(error_data, str):

@@ -6,11 +6,10 @@ requires = [ "poetry-core" ]
 name = "api-response-shaper"
 version = "1.4.0"
 description = "An essential package for structuring and optimizing your API responses."
-authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>", "MEHRSHAD-MIRSHEKARY <mehrshad_mirshekary@email.com>" ]
 license = "MIT"
+authors = [ "ARYAN-NIKNEZHAD <aryan513966@gmail.com>", "MEHRSHAD-MIRSHEKARY <mehrshad_mirshekary@email.com>" ]
 readme = "README.md"
-keywords = [ "django-api-shaper", "django", "shaper", "response-shaper" ]
-
+keywords = [ "django", "django-api-shaper", "response-shaper", "shaper" ]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Web Environment",
@@ -31,44 +30,37 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "Topic :: Software Development :: Libraries :: Python Modules",
 ]
-
 packages = [
   { include = "response_shaper" },
 ]
-
-[tool.poetry.urls]
-"Source Code" = "https://github.com/Lazarus-org/api-response-shaper"
-"Changelog" = "https://github.com/lazarus-org/api-response-shaper/blob/main/CHANGELOG.md"
-"Issues" = "https://github.com/lazarus-org/api-response-shaper/issues"
-
-[tool.poetry.dependencies]
-python = ">=3.10,<3.15"
-django = [
+dependencies.python = ">=3.10,<3.15"
+dependencies.django = [
   { version = ">=5.2,<6.0", python = ">=3.10,<3.12" },
   { version = ">=5.2,<6.2", python = ">=3.12,<3.15" },
 ]
-djangorestframework = ">=3.18,<3.19"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.3.2"
-pytest-django = "^4.8.0"
-pytest-asyncio = "^0.25.3"
-pytest-cov = "^5.0.0"
-pylint = "^3.2.6"
-pylint-django = "^2.5.5"
-mypy = "^1.11.1"
-isort = "^5.13.2"
-black = "^24.4.2"
-commitizen = "^3.28.0"
-pre-commit = "^3.5.0"
-bandit = { extras = [ "toml" ], version = "^1.7.9" }
-tox = "^4.16.0"
-django-stubs = "^5.0.4"
-sphinx = "^6.2.1"
-sphinx-rtd-theme = "^2.0.0"
-docformatter = "^1.7.5"
-codecov = "^2.1.13"
-python-semantic-release = "^9.8.8"
+dependencies.djangorestframework = ">=3.18,<3.19"
+group.dev.dependencies.bandit = { extras = [ "toml" ], version = "^1.7.9" }
+group.dev.dependencies.black = "^24.4.2"
+group.dev.dependencies.codecov = "^2.1.13"
+group.dev.dependencies.commitizen = "^3.28.0"
+group.dev.dependencies.django-stubs = "^5.0.4"
+group.dev.dependencies.docformatter = "^1.7.5"
+group.dev.dependencies.isort = "^5.13.2"
+group.dev.dependencies.mypy = "^1.11.1"
+group.dev.dependencies.pre-commit = "^3.5.0"
+group.dev.dependencies.pylint = "^3.2.6"
+group.dev.dependencies.pylint-django = "^2.5.5"
+group.dev.dependencies.pytest = "^8.3.2"
+group.dev.dependencies.pytest-asyncio = "^0.25.3"
+group.dev.dependencies.pytest-cov = "^5.0.0"
+group.dev.dependencies.pytest-django = "^4.8.0"
+group.dev.dependencies.python-semantic-release = "^9.8.8"
+group.dev.dependencies.sphinx = "^6.2.1"
+group.dev.dependencies.sphinx-rtd-theme = "^2.0.0"
+group.dev.dependencies.tox = "^4.16.0"
+urls."Source Code" = "https://github.com/Lazarus-org/api-response-shaper"
+urls.Changelog = "https://github.com/lazarus-org/api-response-shaper/blob/main/CHANGELOG.md"
+urls.Issues = "https://github.com/lazarus-org/api-response-shaper/issues"
 
 [tool.black]
 line-length = 88
@@ -96,124 +88,102 @@ exclude = '''
 profile = "black"
 line_length = 88
 skip = [
-  "venv",
-  ".venv",
-  ".tox",
-  "build",
-  "dist",
-  ".git",
-  "__pycache__",
   "*.egg-info",
+  ".git",
   ".mypy_cache",
   ".pytest_cache",
-  "migrations",
-  "node_modules",
+  ".tox",
+  ".venv",
+  "__pycache__",
+  "build",
+  "dist",
   "env",
   "kernel",
+  "migrations",
+  "node_modules",
+  "venv",
 ]
 
 [tool.pylint]
+argument-rgx = "[a-z_][a-z0-9_]{2,30}$"
+attr-rgx = "[a-z_][a-z0-9_]{2,30}$"
+class-rgx = "[A-Z_][a-zA-Z0-9]+$"
+const-rgx = "([A-Z_][A-Z0-9_]*)|(__.*__)"
 disable = [
   "C0103", # Invalid constant name
   "C0114", # Missing module docstring
   "C0115", # Missing class docstring
   "C0116", # Missing function or method docstring
-  "E1101", # Instance of 'Foo' has no 'bar' member
-  "W0212", # Access to a protected member
   "C0301", # Line too long
   "C0411", # Wrong import order
+  "C0415",
+  "E1101", # Instance of 'Foo' has no 'bar' member
+  "R0401",
+  "R0801", # Duplicate code
+  "R0903", # Too few public methods
+  "R0911",
+  "R0913",
+  "R1705", # Unnecessary "elif" after "return"
+  "R1719", # The if expression can be replaced with 'bool(test)'
+  "W0143",
+  "W0212", # Access to a protected member
+  "W0231",
   "W0611", # Unused imports
   "W0613", # Unused arguments
-  "W0622", # Redefining built-in names
-  "R0903", # Too few public methods
-  "R0801", # Duplicate code
   "W0621",
-  "C0415",
-  "R1719", # The if expression can be replaced with 'bool(test)'
-  "R1705", # Unnecessary "elif" after "return"
-  "R0401",
-  "W0143",
-  "W0231",
-  "R0913",
-  "R0911",
-]
-max-line-length = 88
-max-positional-arguments = 10
-ignore = [
-  "tests",
-  "migrations/*",
-  "venv/*",
-  "build/*",
-  "dist/*",
-  ".git/*",
-  ".tox/*",
-  "__pycache__/*",
-  "*.egg-info/*",
-  ".mypy_cache/*",
-  ".pytest_cache/*",
+  "W0622", # Redefining built-in names
 ]
 django-settings-module = "kernel.settings"
+function-rgx = "[a-z_][a-z0-9_]{2,30}$"
+ignore = [
+  "*.egg-info/*",
+  ".git/*",
+  ".mypy_cache/*",
+  ".pytest_cache/*",
+  ".tox/*",
+  "__pycache__/*",
+  "build/*",
+  "dist/*",
+  "migrations/*",
+  "tests",
+  "venv/*",
+]
 load-plugins = [
   "pylint_django",
   "pylint.extensions.docparams",
 ]
-
-suggestion-mode = true
-const-rgx = "([A-Z_][A-Z0-9_]*)|(__.*__)"
-attr-rgx = "[a-z_][a-z0-9_]{2,30}$"
-variable-rgx = "[a-z_][a-z0-9_]{2,30}$"
-argument-rgx = "[a-z_][a-z0-9_]{2,30}$"
+max-line-length = 88
+max-positional-arguments = 10
 method-rgx = "[a-z_][a-z0-9_]{2,30}$"
-function-rgx = "[a-z_][a-z0-9_]{2,30}$"
-class-rgx = "[A-Z_][a-zA-Z0-9]+$"
 module-rgx = "(([a-z_][a-z0-9_]*)|(__.*__))$"
+suggestion-mode = true
+variable-rgx = "[a-z_][a-z0-9_]{2,30}$"
 
-[tool.pytest.ini_options]
-python_files = [ "tests.py", "test_*.py" ]
-addopts = "--cov --cov-report=term-missing --cov-report=html --cov-fail-under=90"
-markers = [
-  "api_responses: Tests api responses",
-  "decorators: Test decorators for api responses",
-  "settings: Test settings",
-  "middleware: Test Dynamic middleware",
-  "exceptions: Test exceptions and error handlers",
-]
-
-norecursedirs = [
-  "migrations",
-  "env",
-  "venv",
-  ".venv",
+[tool.bandit]
+exclude_dirs = [
+  ".git",
   ".tox",
-  "dist",
+  ".venv",
   "build",
-  "kernel",
+  "dist",
+  "migrations",
+  "tests",
+  "venv",
 ]
-
-[tool.coverage.run]
-source = [ "response_shaper" ]
-omit = [
-  "*/apps.py*",
-  "*/tests/*",
-  "*/migrations/*",
-]
-
-[tool.coverage.report]
-exclude_lines = [
-  "pragma: no cover",
-  "def __repr__",
-  "if self\\.debug",
-  "raise AssertionError",
-  "if 0:",
-  "if __name__ == .__main__.:",
-]
+targets = [ "./response_shaper" ]
+confidence = "medium"
+exclude_tests = [ "B301", "B302" ]
+include = [ "*.py" ]
+max_lines = 500
+output_file = "bandit_report.txt"
+output_format = "screen"
+plugins.B104 = { check_typed_list = true }
+progress = true
+reports = true
+severity = "medium"
 
 [tool.mypy]
 mypy_path = "stubs"
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-ignore_missing_imports = true
-explicit_package_bases = true
 exclude = """
 ^docs/source/conf.py|
 ^build/|
@@ -221,95 +191,106 @@ exclude = """
 ^stubs/|
 ^kernel/
 """
+explicit_package_bases = true
+ignore_missing_imports = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
 
-[tool.bandit]
-targets = [ "./response_shaper" ]
-exclude_dirs = [
-  "tests",
-  "migrations",
-  ".git",
+[tool.pytest]
+ini_options.norecursedirs = [
   ".tox",
   ".venv",
-  "venv",
   "build",
   "dist",
+  "env",
+  "kernel",
+  "migrations",
+  "venv",
 ]
-severity = "medium"
-confidence = "medium"
-max_lines = 500
-progress = true
-reports = true
-output_format = "screen"
-output_file = "bandit_report.txt"
-include = [ "*.py" ]
-exclude_tests = [ "B301", "B302" ]
+ini_options.python_files = [ "test_*.py", "tests.py" ]
+ini_options.addopts = "--cov --cov-report=term-missing --cov-report=html --cov-fail-under=90"
+ini_options.markers = [
+  "api_responses: Tests api responses",
+  "decorators: Test decorators for api responses",
+  "exceptions: Test exceptions and error handlers",
+  "middleware: Test Dynamic middleware",
+  "settings: Test settings",
+]
 
-[tool.bandit.plugins]
-B104 = { check_typed_list = true }
+[tool.coverage]
+run.source = [ "response_shaper" ]
+run.omit = [
+  "*/apps.py*",
+  "*/migrations/*",
+  "*/tests/*",
+]
+report.exclude_lines = [
+  "def __repr__",
+  "if __name__ == .__main__.:",
+  "if 0:",
+  "if self\\.debug",
+  "pragma: no cover",
+  "raise AssertionError",
+]
 
 [tool.commitizen]
 name = "cz_conventional_commits"
 version = "1.4.0"
 version_files = [ "pyproject.toml" ]
 tag_format = "v$version"
-
-[tool.commitizen.settings]
-increment_types = [ "feat", "fix" ]
+settings.increment_types = [ "feat", "fix" ]
 
 [tool.semantic_release]
-assets = [  ]
-build_command_env = [  ]
-commit_message = "{version}\n\nAutomatically generated by python-semantic-release"
-commit_parser = "emoji"
-logging_use_named_masks = false
+tag_format = "v{version}"
 major_on_zero = true
 allow_zero_version = true
+# version_variables = [ "django_notification/version.py:__version__" ]
+build_command_env = []
 no_git_verify = false
-tag_format = "v{version}"
-#version_variables = [ "django_notification/version.py:__version__" ]
-
-[tool.semantic_release.branches.main]
-match = "(main|master)"
-prerelease_token = "rc"
-prerelease = false
-
-[tool.semantic_release.changelog]
-template_dir = "templates"
-changelog_file = "CHANGELOG.md"
-exclude_commit_patterns = [  ]
-
-[tool.semantic_release.changelog.environment]
-block_start_string = "{%"
-block_end_string = "%}"
-variable_start_string = "{{"
-variable_end_string = "}}"
-comment_start_string = "{#"
-comment_end_string = "#}"
-trim_blocks = false
-lstrip_blocks = false
-newline_sequence = "\n"
-keep_trailing_newline = false
-extensions = [  ]
-autoescape = true
-
-[tool.semantic_release.commit_author]
-env = "GIT_COMMIT_AUTHOR"
-default = "semantic-release <semantic-release>"
-
-[tool.semantic_release.commit_parser_options]
-allowed_tags = [ "build", "chore", "ci", "docs", "feat", "fix", "perf", "style", "refactor", "test" ]
-minor_tags = [ "feat" ]
-patch_tags = [ "fix", "perf" ]
-default_bump_level = 0
-parse_emoji = true
-
-[tool.semantic_release.remote]
-name = "origin"
-token = ""
-type = "github"
-ignore_token_for_push = false
-insecure = false
-
-[tool.semantic_release.publish]
-dist_glob_patterns = [ "dist/*" ]
-upload_to_vcs_release = true
+assets = []
+commit_message = "{version}\n\nAutomatically generated by python-semantic-release"
+commit_author.default = "semantic-release <semantic-release>"
+commit_author.env = "GIT_COMMIT_AUTHOR"
+logging_use_named_masks = false
+commit_parser = "emoji"
+commit_parser_options.allowed_tags = [
+  "build",
+  "chore",
+  "ci",
+  "docs",
+  "feat",
+  "fix",
+  "perf",
+  "style",
+  "refactor",
+  "test"
+]
+commit_parser_options.default_bump_level = 0
+commit_parser_options.minor_tags = [ "feat" ]
+commit_parser_options.parse_emoji = true
+commit_parser_options.patch_tags = [ "fix", "perf" ]
+branches.main.match = "(main|master)"
+branches.main.prerelease_token = "rc"
+branches.main.prerelease = false
+publish.dist_glob_patterns = [ "dist/*" ]
+publish.upload_to_vcs_release = true
+changelog.changelog_file = "CHANGELOG.md"
+changelog.environment.autoescape = true
+changelog.environment.block_end_string = "%}"
+changelog.environment.block_start_string = "{%"
+changelog.environment.comment_end_string = "#}"
+changelog.environment.comment_start_string = "{#"
+changelog.environment.extensions = []
+changelog.environment.keep_trailing_newline = false
+changelog.environment.lstrip_blocks = false
+changelog.environment.newline_sequence = "\n"
+changelog.environment.trim_blocks = false
+changelog.environment.variable_end_string = "}}"
+changelog.environment.variable_start_string = "{{"
+changelog.exclude_commit_patterns = []
+changelog.template_dir = "templates"
+remote.ignore_token_for_push = false
+remote.insecure = false
+remote.name = "origin"
+remote.token = ""
+remote.type = "github"

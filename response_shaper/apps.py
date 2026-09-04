@@ -10,10 +10,10 @@ class ResponseShaperConfig(AppConfig):
     def ready(self) -> None:
         """Import and register system checks for the Response Shaper app.
 
-        This method is called when the app is ready and ensures that the settings
-        checks from `response_shaper.settings.check` are imported. This allows
-        Django's system check framework to validate the Response Shaper configuration during
-        startup.
+        This method is called when the app is ready and ensures that the
+        settings checks from `response_shaper.settings.check` are
+        imported. This allows Django's system check framework to
+        validate the Response Shaper configuration during startup.
 
         """
         from response_shaper.settings import check
