@@ -45,7 +45,7 @@ urls.Issues = "https://github.com/lazarus-org/api-response-shaper/issues"
 [dependency-groups]
 dev = [
   "bandit[toml]>=1.7.9,<2",
-  "black>=24.4.2,<25",
+  "black>=26.5.1",
   "codecov>=2.1.13,<3",
   "commitizen>=3.28,<4",
   "django-stubs>=5.0.4,<6",
