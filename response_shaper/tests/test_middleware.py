@@ -3,7 +3,7 @@ from asyncio import iscoroutinefunction
 import pytest
 import json
 import sys
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 from django.http import JsonResponse, HttpResponse, HttpRequest, HttpResponseBase
 from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from django.db import IntegrityError
@@ -230,9 +230,12 @@ class TestDynamicResponseMiddleware:
                 status=response.status_code,
             )
 
-        # Patch the import_string function to return the custom success handler
-        with patch(
-            "django.utils.module_loading.import_string",
+        with patch.object(
+            response_shaper_config,
+            "success_handler",
+            new="tests.custom_success_handler",
+        ), patch(
+            "response_shaper.middleware.import_string",
             return_value=custom_success_handler,
         ):
             request = request_factory.get("/api/test/")
@@ -246,8 +249,9 @@ class TestDynamicResponseMiddleware:
             assert response.status_code == 200
             assert response_data == {"custom": "success", "status_code": 200}
 
-            response.data = {"key": "value"}
-            response = middleware._default_success_handler(response)
+            response = middleware._default_success_handler(
+                JsonResponse({"key": "value"}, status=200)
+            )
             response_data = self.parse_json_response(response)
             assert response_data["data"] == {"key": "value"}
 
@@ -271,9 +275,12 @@ class TestDynamicResponseMiddleware:
                 status=response.status_code,
             )
 
-        # Patch the import_string function to return the custom error handler
-        with patch(
-            "django.utils.module_loading.import_string",
+        with patch.object(
+            response_shaper_config,
+            "error_handler",
+            new="tests.custom_error_handler",
+        ), patch(
+            "response_shaper.middleware.import_string",
             return_value=custom_error_handler,
         ):
             request = request_factory.get("/api/test/")
@@ -287,10 +294,31 @@ class TestDynamicResponseMiddleware:
             assert response.status_code == 400
             assert response_data == {"custom": "error", "status_code": 400}
 
-            response.data = {"key": "value"}
-            response = middleware._default_error_handler(response)
+            response = middleware._default_error_handler(
+                JsonResponse({"key": "value"}, status=400)
+            )
             response_data = self.parse_json_response(response)
-            assert response_data["error"] == {'key': 'value'}
+            assert response_data["error"] == {"key": "value"}
+
+    def test_smart_error_handler_preserves_structured_payload(
+        self, get_response: Callable, monkeypatch
+    ) -> None:
+        """Smart extraction must preserve intentional structured API errors."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", True)
+        payload = {
+            "code": "map_bbox_required",
+            "detail": "geometry_bbox is required for map requests.",
+            "parameter": "geometry_bbox",
+        }
+        response = JsonResponse(payload, status=400)
+        response.data = payload
+        middleware = DynamicResponseMiddleware(get_response)
+
+        shaped_response = middleware._default_error_handler(response)
+        response_data = self.parse_json_response(shaped_response)
+
+        assert response_data["error"] == payload
 
     def test_process_object_does_not_exist_exception(
         self, request_factory: RequestFactory, get_response: Callable

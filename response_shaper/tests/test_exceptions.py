@@ -29,12 +29,18 @@ from django.conf import settings
 from django.http import JsonResponse
 
 from response_shaper.exceptions import ExceptionHandler
+from response_shaper.settings.conf import response_shaper_config
 from response_shaper.tests.constants import PYTHON_VERSION, PYTHON_VERSION_REASON
 
 pytestmark = [
     pytest.mark.exceptions,
     pytest.mark.skipif(sys.version_info < PYTHON_VERSION, reason=PYTHON_VERSION_REASON),
 ]
+
+
+def custom_error_extractor(error_data):
+    """Test extractor used to verify dotted-path custom extraction."""
+    return {"custom": error_data}
 
 
 class TestExceptionHandler:
@@ -131,6 +137,122 @@ class TestExceptionHandler:
         assert ExceptionHandler.extract_first_error(
             {"field": [{"nested": "Invalid value"}]}
         ) == {"nested": "Invalid value"}
+
+    def test_extract_error_uses_legacy_first_strategy(self, monkeypatch):
+        """The default strategy must preserve the existing package contract."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "first")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", True)
+
+        errors = {"field1": "Field1 error", "field2": "Field2 error"}
+
+        assert ExceptionHandler.extract_error(errors) == {"field1": "Field1 error"}
+
+    def test_smart_strategy_preserves_flat_structured_error(self, monkeypatch):
+        """Smart extraction preserves arbitrary flat machine-readable payloads."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", True)
+        error = {
+            "kind": "map_bbox_required",
+            "message": "geometry_bbox is required for map requests.",
+            "parameter": "geometry_bbox",
+        }
+
+        assert ExceptionHandler.extract_error(error) == error
+
+    def test_smart_strategy_still_extracts_first_field_error(self, monkeypatch):
+        """Smart extraction continues to traverse normal serializer error trees."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", True)
+        errors = {
+            "geometry_bbox": ["This field is required."],
+            "zoom": ["Invalid zoom."],
+        }
+
+        assert ExceptionHandler.extract_error(errors) == {
+            "geometry_bbox": "This field is required."
+        }
+
+    def test_smart_strategy_preserves_nested_structured_error(self, monkeypatch):
+        """Structured payloads remain atomic even when nested in an error tree."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", True)
+        structured_error = {
+            "error_id": "map_bbox_required",
+            "text": "geometry_bbox is required for map requests.",
+            "parameter": "geometry_bbox",
+        }
+        errors = {"map": [structured_error]}
+
+        assert ExceptionHandler.extract_error(errors) == structured_error
+
+    def test_full_strategy_preserves_complete_error_payload(self, monkeypatch):
+        """Full extraction returns the original error payload without traversal."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "full")
+        errors = {
+            "geometry_bbox": ["This field is required."],
+            "zoom": ["Invalid zoom."],
+        }
+
+        assert ExceptionHandler.extract_error(errors) is errors
+
+    def test_custom_error_extractor_from_dotted_path(self, monkeypatch):
+        """Consumers can replace extraction with their own callable."""
+        monkeypatch.setattr(
+            response_shaper_config,
+            "error_extraction",
+            "response_shaper.tests.test_exceptions.custom_error_extractor",
+        )
+        errors = {"field": ["Invalid value"]}
+
+        assert ExceptionHandler.extract_error(errors) == {"custom": errors}
+
+    def test_invalid_custom_error_extractor_path(self, monkeypatch):
+        """Invalid dotted paths fail with a Django configuration error."""
+        monkeypatch.setattr(
+            response_shaper_config,
+            "error_extraction",
+            "response_shaper.tests.constants.missing_extractor",
+        )
+
+        with pytest.raises(ImproperlyConfigured):
+            ExceptionHandler.extract_error({"field": ["Invalid value"]})
+
+    def test_custom_error_extractor_must_be_callable(self, monkeypatch):
+        """A dotted path must resolve to a callable, not just any object."""
+        monkeypatch.setattr(
+            response_shaper_config,
+            "error_extraction",
+            "response_shaper.tests.constants.PYTHON_VERSION",
+        )
+
+        with pytest.raises(ImproperlyConfigured):
+            ExceptionHandler.extract_error({"field": ["Invalid value"]})
+
+    @pytest.mark.parametrize(
+        "error",
+        [[], {}, 42, 3.14, True, None],
+    )
+    def test_smart_strategy_preserves_empty_and_scalar_values(self, monkeypatch, error):
+        """Smart extraction preserves terminal values instead of coercing them."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+
+        assert ExceptionHandler.extract_error(error) is error
+
+    def test_smart_strategy_preserves_non_string_value_inside_error_tree(
+        self, monkeypatch
+    ):
+        """Smart traversal selects the first leaf without changing its type."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "smart")
+        monkeypatch.setattr(response_shaper_config, "return_dict_error", False)
+
+        assert ExceptionHandler.extract_error({"field": [42]}) == 42
+
+    def test_legacy_first_strategy_still_coerces_terminal_values(self, monkeypatch):
+        """The compatibility strategy keeps the pre-existing string coercion."""
+        monkeypatch.setattr(response_shaper_config, "error_extraction", "first")
+
+        assert ExceptionHandler.extract_error(42) == "42"
+        assert ExceptionHandler.extract_error({}) == "{}"
 
     def test_get_detailed_error_info(self):
         """Test the _get_detailed_error_info method in debug mode."""

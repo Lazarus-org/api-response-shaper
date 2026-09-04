@@ -15,16 +15,13 @@ classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Web Environment",
   "Framework :: Django",
-  "Framework :: Django :: 4.2",
-  "Framework :: Django :: 5.0",
-  "Framework :: Django :: 5.1",
+  "Framework :: Django :: 5.2",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
@@ -42,12 +39,9 @@ packages = [
 "Issues" = "https://github.com/lazarus-org/api-response-shaper/issues"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
-django = [
-  { version = ">=4.2,<5.0", python = ">=3.9,<3.10" },
-  { version = ">=4.2,<5.3", python = ">=3.10" },      # Django 4.2 and 5.x for Python 3.10+
-]
-djangorestframework = "^3.14.0"
+python = ">=3.10,<3.14"
+django = ">=5.2,<5.3"
+djangorestframework = ">=3.18,<3.19"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.2"
@@ -184,6 +178,7 @@ norecursedirs = [
   "env",
   "venv",
   ".venv",
+  ".tox",
   "dist",
   "build",
   "kernel",
@@ -226,6 +221,12 @@ targets = [ "./response_shaper" ]
 exclude_dirs = [
   "tests",
   "migrations",
+  ".git",
+  ".tox",
+  ".venv",
+  "venv",
+  "build",
+  "dist",
 ]
 severity = "medium"
 confidence = "medium"
@@ -234,7 +235,7 @@ progress = true
 reports = true
 output_format = "screen"
 output_file = "bandit_report.txt"
-include = [ "B101", "B102" ]
+include = [ "*.py" ]
 exclude_tests = [ "B301", "B302" ]
 
 [tool.bandit.plugins]

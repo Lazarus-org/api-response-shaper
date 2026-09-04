@@ -1,19 +1,13 @@
 from typing import Any, List
 
 from django.core.checks import Error
+from django.utils.module_loading import import_string
+
+BUILTIN_ERROR_EXTRACTION_STRATEGIES = {"first", "smart", "full"}
+LEGACY_DEFAULT_HANDLER_PATHS = {"default_success_handler", "default_error_handler"}
 
 
 def validate_boolean_setting(setting_value: Any, setting_name: str) -> List[Error]:
-    """Helper function to validate boolean settings.
-
-    Args:
-        setting_value: The value of the setting to validate.
-        setting_name: The name of the setting being validated.
-
-    Returns:
-        List[Error]: A list of errors if the validation fails, or an empty list if valid.
-
-    """
     errors: List[Error] = []
     if setting_value is None or not isinstance(setting_value, bool):
         errors.append(
@@ -27,54 +21,100 @@ def validate_boolean_setting(setting_value: Any, setting_name: str) -> List[Erro
 
 
 def validate_class_setting(setting_value: Any, setting_name: str) -> List[Error]:
-    """Helper function to validate settings that are class paths (strings).
+    """Validate an optional dotted path to a callable response handler."""
+    if setting_value is None or setting_value == "":
+        return []
 
-    Args:
-        setting_value: The value of the setting to validate.
-        setting_name: The name of the setting being validated.
-
-    Returns:
-        List[Error]: A list of errors if the validation fails, or an empty list if valid.
-
-    """
-    errors: List[Error] = []
-    # Only validate if the setting is not empty (since an empty string is allowed)
-    if (
-        setting_value is not None
-        and setting_value != ""
-        and not isinstance(setting_value, str)
-    ):
-        errors.append(
+    if not isinstance(setting_value, str):
+        return [
             Error(
-                f"{setting_name} should be a valid Python class path string.",
-                hint=f"Set {setting_name} to a valid import path for a class.",
+                f"{setting_name} should be a valid Python callable path string.",
+                hint=f"Set {setting_name} to a dotted import path for a callable.",
                 id=f"response_shaper.E002.{setting_name}",
             )
-        )
-    return errors
+        ]
+
+    if setting_value in LEGACY_DEFAULT_HANDLER_PATHS:
+        return []
+
+    try:
+        configured = import_string(setting_value)
+    except (ImportError, AttributeError) as exc:
+        return [
+            Error(
+                f"{setting_name} could not be imported: {exc}",
+                hint=f"Set {setting_name} to an importable dotted callable path.",
+                id=f"response_shaper.E008.{setting_name}",
+            )
+        ]
+
+    if not callable(configured):
+        return [
+            Error(
+                f"{setting_name} must resolve to a callable.",
+                hint=f"Set {setting_name} to a callable function or class.",
+                id=f"response_shaper.E009.{setting_name}",
+            )
+        ]
+
+    return []
+
+
+def validate_error_extraction_setting(
+    setting_value: Any, setting_name: str
+) -> List[Error]:
+    """Validate a built-in extraction strategy or custom callable path."""
+    if not isinstance(setting_value, str) or not setting_value:
+        return [
+            Error(
+                f"{setting_name} should be a non-empty string.",
+                hint=(
+                    f"Set {setting_name} to 'first', 'smart', 'full', or a "
+                    "dotted Python path to a custom extractor callable."
+                ),
+                id=f"response_shaper.E006.{setting_name}",
+            )
+        ]
+
+    if setting_value in BUILTIN_ERROR_EXTRACTION_STRATEGIES:
+        return []
+
+    if "." not in setting_value:
+        return [
+            Error(
+                f"{setting_name} contains an unknown extraction strategy.",
+                hint=(
+                    f"Set {setting_name} to 'first', 'smart', 'full', or a "
+                    "dotted Python path to a custom extractor callable."
+                ),
+                id=f"response_shaper.E007.{setting_name}",
+            )
+        ]
+
+    try:
+        extractor = import_string(setting_value)
+    except (ImportError, AttributeError) as exc:
+        return [
+            Error(
+                f"{setting_name} could not be imported: {exc}",
+                hint=f"Set {setting_name} to an importable dotted callable path.",
+                id=f"response_shaper.E010.{setting_name}",
+            )
+        ]
+
+    if not callable(extractor):
+        return [
+            Error(
+                f"{setting_name} must resolve to a callable.",
+                hint=f"Set {setting_name} to a callable function or class.",
+                id=f"response_shaper.E011.{setting_name}",
+            )
+        ]
+
+    return []
 
 
 def validate_paths_list_setting(setting_value: Any, setting_name: str) -> List[Error]:
-    """Validates that the given setting is a list of paths, ensuring each path
-    is a string and starts and ends with a forward slash ('/').
-
-    Args:
-        setting_value (Any): The value of the setting to validate, expected to be a list of strings.
-        setting_name (str): The name of the setting being validated.
-
-    Returns:
-        List[Error]: A list of errors if the validation fails, or an empty list if valid.
-
-    Validation Criteria:
-    - The setting must be a list.
-    - Each item in the list must be a string.
-    - Each path must start and end with a forward slash ('/').
-
-    Example:
-        A valid setting: ['/admin/', '/schema/swagger-ui/']
-        An invalid setting: ['admin', '/schema/swagger-ui', '/schema']
-
-    """
     errors: List[Error] = []
     if not isinstance(setting_value, list):
         errors.append(

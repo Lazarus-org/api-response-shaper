@@ -6,6 +6,7 @@ from response_shaper.settings.conf import response_shaper_config
 from response_shaper.validators.config_validators import (
     validate_boolean_setting,
     validate_class_setting,
+    validate_error_extraction_setting,
     validate_paths_list_setting,
 )
 
@@ -36,6 +37,12 @@ def check_response_shaper_settings(app_configs: Any, **kwargs: Any) -> List[Erro
         validate_boolean_setting(
             response_shaper_config.return_dict_error,
             "RESPONSE_SHAPER_RETURN_ERROR_AS_DICT",
+        )
+    )
+    errors.extend(
+        validate_error_extraction_setting(
+            response_shaper_config.error_extraction,
+            "RESPONSE_SHAPER_ERROR_EXTRACTION",
         )
     )
 

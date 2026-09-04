@@ -16,6 +16,17 @@ from .types import (
     UserType,
 )
 
+RESPONSE_SHAPER_PROCESSED_ATTR = "_response_shaper_processed"
+
+
+def _build_response(
+    payload: Dict, status_code: int, headers: Optional[Dict[str, str]] = None
+) -> Response:
+    response = Response(payload, status=status_code, headers=headers)
+    setattr(response, RESPONSE_SHAPER_PROCESSED_ATTR, True)
+    return response
+
+
 # API Response Functions
 
 
@@ -42,7 +53,7 @@ def api_response(
         "data": data,
         "errors": errors,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def paginated_api_response(
@@ -79,7 +90,7 @@ def paginated_api_response(
             "total_items": total_items,
         },
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def error_api_response(
@@ -103,7 +114,7 @@ def error_api_response(
         "error_code": error_code,
         "errors": errors,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def minimal_success_response(
@@ -120,7 +131,7 @@ def minimal_success_response(
         "status": "success",
         "message": message,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def metadata_api_response(
@@ -156,7 +167,7 @@ def metadata_api_response(
             "api_version": api_version,
         },
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def hateoas_api_response(
@@ -185,7 +196,7 @@ def hateoas_api_response(
         "errors": errors,
         "links": links,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def multi_resource_response(
@@ -211,7 +222,7 @@ def multi_resource_response(
         "resources": resources,
         "errors": errors,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def batch_api_response(
@@ -238,7 +249,7 @@ def batch_api_response(
         "batch_results": results,
         "errors": errors,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def auth_api_response(
@@ -268,7 +279,7 @@ def auth_api_response(
         "user": user,
         "errors": errors,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def rate_limited_response(
@@ -290,7 +301,8 @@ def rate_limited_response(
         "message": message,
         "retry_after": retry_after,
     }
-    return Response(response_structure, status=status_code)
+    headers = {"Retry-After": str(retry_after)} if retry_after is not None else None
+    return _build_response(response_structure, status_code, headers=headers)
 
 
 def upload_progress_response(
@@ -313,7 +325,7 @@ def upload_progress_response(
         "message": message,
         "progress": progress,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def service_availability_response(
@@ -336,7 +348,7 @@ def service_availability_response(
         "message": message,
         "service_name": service_name,
     }
-    return Response(response_structure, status=status_code)
+    return _build_response(response_structure, status_code)
 
 
 def redirect_response(
@@ -357,4 +369,5 @@ def redirect_response(
         "message": message,
         "redirect_url": redirect_url,
     }
-    return Response(response_structure, status=status_code)
+    headers = {"Location": redirect_url} if redirect_url is not None else None
+    return _build_response(response_structure, status_code, headers=headers)

@@ -56,9 +56,10 @@ repos:
     rev: 1.8.2
     hooks:
       - id: bandit
-        args: [ "-c", "pyproject.toml", "-r", "." ]
+        args: [ "-c", "pyproject.toml", "-r", "response_shaper" ]
         additional_dependencies: [ "bandit[toml]" ]
         exclude: (migrations/|tests/|docs/).*
+        pass_filenames: false
 
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.7.5

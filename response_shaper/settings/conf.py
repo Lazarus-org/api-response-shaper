@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 
 from django.conf import settings
 
@@ -17,18 +17,19 @@ class ResponseShaperConfig:
         self.return_dict_error = self.get_setting(
             f"{self.config_prefix}RETURN_ERROR_AS_DICT", True
         )
+        self.error_extraction = self.get_setting(
+            f"{self.config_prefix}ERROR_EXTRACTION", "first"
+        )
         self.excluded_paths = self.get_setting(
             f"{self.config_prefix}EXCLUDED_PATHS",
             ["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"],
         )
         self.success_handler = self.get_setting(
-            f"{self.config_prefix}SUCCESS_HANDLER", "default_success_handler"
+            f"{self.config_prefix}SUCCESS_HANDLER", ""
         )
-        self.error_handler = self.get_setting(
-            f"{self.config_prefix}ERROR_HANDLER", "default_error_handler"
-        )
+        self.error_handler = self.get_setting(f"{self.config_prefix}ERROR_HANDLER", "")
 
-    def get_setting(self, setting_name: str, default_value: Any) -> Union[str, bool]:
+    def get_setting(self, setting_name: str, default_value: Any) -> Any:
         """Retrieve a setting from Django settings with a default fallback."""
         return getattr(settings, setting_name, default_value)
 

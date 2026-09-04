@@ -30,9 +30,11 @@
 
 ## Project Detail
 
-- Language: Python >= 3.9
-- Framework: Django >= 4.2
-- Django REST Framework: >= 3.14
+- Language: Python >= 3.10, < 3.14
+- Framework: Django >= 5.2, < 5.3
+- Django REST Framework: >= 3.18, < 3.19
+
+The CI compatibility matrix covers Python 3.10-3.13, Django 5.2 LTS, and DRF 3.18. Python 3.10 remains supported until October 2026. DRF 3.18 uses dictionary-shaped errors for list serializers (`many=True`); structured error extraction preserves this upstream representation.
 
 
 ## Documentation
@@ -80,8 +82,8 @@ MIDDLEWARE = [
     # ...
 ]
 ```
-Once this middleware is added, all API responses will be dynamically structured. Whether it's a successful or an error response, the middleware ensures a consistent format across your API endpoints.
-You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format.
+Once this middleware is added, eligible `application/json` API responses are dynamically structured. Successful and error responses use a consistent envelope while streaming responses, bodyless HTTP statuses, already content-encoded responses, excluded paths, and non-`application/json` media types are left untouched.
+You can customize the response format using settings or decorators for specific views, but by default, this middleware provides a standardized API response format. Responses produced by this package's own decorators/helpers are marked internally so the global middleware does not shape them a second time.
 You can also configure the `api-response-shaper` for your project needs, for more details, please refer to the [Settings](#settings) section.
 
 ----
@@ -235,10 +237,29 @@ This middleware is highly configurable and supports custom handlers for success 
 
 ### Key Features
 
-- **Consistent Response Format**: Ensures all API responses follow a standardized structure, making it easier for clients to parse and handle responses.
-- **Async Support**: Seamlessly handles both synchronous and asynchronous requests, ensuring compatibility with Django's ASGI stack.
+- **Consistent Response Format**: Shapes eligible `application/json` responses into a standardized structure.
+- **Async Support**: Supports synchronous/asynchronous middleware, async custom handlers, and async decorated views.
 - **Exception Handling**: Automatically catches and processes Django exceptions, returning structured error responses.
+- **Renderer Preservation**: DRF responses keep their negotiated renderer instead of being re-serialized through Django's `JsonResponse`.
+- **Response Metadata Safety**: Preserves valid headers/cookies while dropping stale body-derived metadata such as `ETag` and `Content-Length` when the body changes.
 - **Customizable Handlers**: Allows customization of success and error response formats via the `RESPONSE_SHAPER` configuration.
+
+### Middleware shaping boundaries
+
+The built-in middleware shapes only responses whose media type is exactly `application/json` (parameters such as `charset` are allowed). It intentionally bypasses streaming responses, `1xx`, `204`, `205`, and `304` responses, already content-encoded bodies, and other JSON-based media types such as `application/problem+json` or `application/json-seq`. Those formats can have their own representation contracts and are not rewritten implicitly.
+
+### Performance benchmark
+
+Run the standalone old-versus-new `JsonResponse` shaping benchmark from the
+repository root:
+
+```bash
+python benchmarks/benchmark_middleware.py
+```
+
+Use `--items`, `--iterations`, and `--repeat` to change the workload. The script
+also verifies that DRF responses use their negotiated renderer exactly once and
+remain the original DRF `Response` object.
 
 ---
 
@@ -301,6 +322,7 @@ Here are the default settings that are automatically applied:
 
 RESPONSE_SHAPER_DEBUG_MODE = False
 RESPONSE_SHAPER_RETURN_ERROR_AS_DICT = True
+RESPONSE_SHAPER_ERROR_EXTRACTION = "first"
 RESPONSE_SHAPER_EXCLUDED_PATHS = ["/admin/", "/schema/swagger-ui/", "/schema/redoc/", "/schema/"]
 RESPONSE_SHAPER_SUCCESS_HANDLER = ""
 RESPONSE_SHAPER_ERROR_HANDLER = ""
@@ -332,6 +354,54 @@ error_input = {"field": {"detail": {"code": "invalid"}}}
 # Result: "invalid"
 ```
 
+`RESPONSE_SHAPER_ERROR_EXTRACTION`
+----------------------------------
+
+- **Type**: `str`
+- **Default**: `"first"`
+- **Description**: Controls how error payloads are reduced before they are placed in the shaped response.
+
+Built-in strategies:
+
+- `"first"`: Legacy behavior. Traverses dictionaries/lists and returns only the first error encountered. This remains the default for backward compatibility.
+- `"smart"`: Traverses normal error trees, but preserves a flat mapping of terminal values as one structured error payload. The decision is structural and does not depend on reserved keys such as `code` or `detail`. Terminal values and empty containers are preserved without coercing them to strings.
+- `"full"`: Preserves the complete error payload without extracting a first error.
+
+For example, with `"smart"`:
+
+```python
+RESPONSE_SHAPER_ERROR_EXTRACTION = "smart"
+
+raise serializers.ValidationError(
+    {
+        "code": "map_bbox_required",
+        "detail": "geometry_bbox is required for map requests.",
+        "parameter": "geometry_bbox",
+    }
+)
+```
+
+The complete structured payload is preserved in the response `error` field, while a normal serializer error tree such as:
+
+```python
+{
+    "geometry_bbox": ["This field is required."],
+    "zoom": ["Invalid zoom."],
+}
+```
+
+continues to return only the first error.
+
+For domain-specific rules, set the option to a dotted path to a callable:
+
+```python
+RESPONSE_SHAPER_ERROR_EXTRACTION = "my_project.api.errors.extract_error"
+```
+
+The callable receives the original error data and must return the value that should be placed in the shaped response's `error` field.
+
+> **Note:** No generic library can perfectly infer whether every possible nested mapping is an error tree or an intentionally structured object. Use `"full"` or a custom extractor when your API's error contract is more complex than the `"smart"` structural heuristic.
+
 `RESPONSE_SHAPER_EXCLUDED_PATHS`
 --------------------------------
 
@@ -344,15 +414,19 @@ error_input = {"field": {"detail": {"code": "invalid"}}}
 ---------------------------------
 
 - **Type**: `str`
-- **Description**: Path to the custom handler to manage successful responses. you can specify a custom handler if you want to modify the success response format.
-- **Default**: Default Success handler in `DynamicResponseMiddleware`
+- **Description**: Optional dotted path to a callable that manages successful responses. An empty string uses the built-in success handler. Explicit invalid or non-callable paths fail fast through Django's configuration checks/runtime initialization instead of silently falling back. Sync and async callables are supported.
+- **Default**: `""` (built-in success handler)
 
 `RESPONSE_SHAPER_ERROR_HANDLER`
 -------------------------------
 
 - **Type**: `str`
-- **Description**: Path to the custom handler to manage error responses. Similar to the success handler, it allows you to provide your own handler to modify the error response format if the default behavior does not meet your needs.
-- **Default**: Default Error handler in `DynamicResponseMiddleware`
+- **Description**: Optional dotted path to a callable that manages error responses. An empty string uses the built-in error handler. Explicit invalid or non-callable paths fail fast instead of silently falling back. Sync and async callables are supported.
+- **Default**: `""` (built-in error handler)
 
+
+### HTTP headers from specialized helpers
+
+`redirect_response(redirect_url=...)` sets the standard `Location` header when a URL is supplied. `rate_limited_response(retry_after=...)` sets `Retry-After` when a retry value is supplied. The values remain available in the JSON payload as before.
 
 Thank you for using `api-response-shaper`. We hope this package enhances your Django application's API responses. If you have any questions or issues, feel free to open an issue on our [GitHub repository](https://github.com/lazarus-org/api-response-shaper).
