@@ -248,21 +248,6 @@ This middleware is highly configurable and supports custom handlers for success 
 
 The built-in middleware shapes only responses whose media type is exactly `application/json` (parameters such as `charset` are allowed). It intentionally bypasses streaming responses, `1xx`, `204`, `205`, and `304` responses, already content-encoded bodies, and other JSON-based media types such as `application/problem+json` or `application/json-seq`. Those formats can have their own representation contracts and are not rewritten implicitly.
 
-### Performance benchmark
-
-Run the standalone old-versus-new `JsonResponse` shaping benchmark from the
-repository root:
-
-```bash
-python benchmarks/benchmark_middleware.py
-```
-
-Use `--items`, `--iterations`, and `--repeat` to change the workload. The script
-also verifies that DRF responses use their negotiated renderer exactly once and
-remain the original DRF `Response` object.
-
----
-
 ## Exception Handling
 
 The middleware automatically handles Django exceptions and structures error responses for both **synchronous** and **asynchronous** workflows.
